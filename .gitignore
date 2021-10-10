@@ -112,3 +112,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+.vscode/launch.json
+*.json
+.env.file
+Aptfile
+figure.jpg
+pyodbc.pyi
