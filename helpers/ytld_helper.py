@@ -10,6 +10,9 @@ import itertools
 import math
 import random
 
+# Huge props goes to vbe0201 https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d
+# For help and inspiration
+
 class VoiceError(Exception):
     pass
 

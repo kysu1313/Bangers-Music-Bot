@@ -7,7 +7,6 @@ from discord.utils import get
 from helpers.settings import Settings
 from helpers.music import Music
 from helpers.song import Song
-from helpers.play_state import PlayState
 from helpers.ytld_helper import YTDLError, YTDLSource
 import typing as t
 
@@ -62,22 +61,45 @@ class Commands(commands.Cog):
 
     @commands.command(name='join', help='Join voice channel')
     async def join(self, ctx, *, channel: t.Optional[discord.VoiceChannel]):
-
-        destination = ctx.author.voice.channel
+        server = ctx.author.voice.channel
         if ctx.voice_state.voice:
-            await ctx.voice_state.voice.move_to(destination)
+            await ctx.voice_state.voice.move_to(server)
             return
-        ctx.voice_state.voice = await destination.connect()
+        ctx.voice_state.voice = await server.connect()
 
-        #channel = ctx.message.author.voice.channel
-        #self.voice = await channel.connect(timeout=1000)
-        #self.music = Music(self.bot, commands.Context, self.voice)
+        try:
+            await self.bot.wait_for('reaction_add', check=self.check)
+        except asyncio.TimeoutError:
+            pass
+
+    #@commands.command(name='test')
+    #async def test(self, ctx):
+    #    current = ctx.voice_state.get_current()
+    #    embed = current.build_embed()
+    #    await current.source.channel.send(embed = embed)
+
+
+    def check(self, reaction, ctx):
+        result = asyncio.create_task(self.run_check(reaction, ctx)) # run the async function
+        return result
+
+    async def run_check(self, reaction, ctx):
+        emoji = str(reaction.emoji)
+        if emoji == '⏯': # and ctx.user != self.bot.user:
+            if ctx.voice_state.is_playing:
+                await ctx.voice_state.pause()
+            else:
+                await ctx.voice_state.resume()
+        if emoji == '⏹': # and ctx.user != self.bot.user:
+            await ctx.voice_state.stop()
+        if emoji == '⏩': # and ctx.user != self.bot.user:
+            await ctx.voice_state.skip()
 
     @commands.command(name='play', help='Plays music from youtube link')
     async def play(self, ctx: commands.Context, *link):
         
         if not ctx.voice_state.voice:
-            await ctx.invoke(self._join)
+            await ctx.invoke(self.join)
 
         async with ctx.typing():
             try:
@@ -90,44 +112,6 @@ class Commands(commands.Cog):
                 await ctx.voice_state.songs.put(song)
                 await ctx.send('Enqueued {}'.format(str(source)))
 
-        #source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
-        #song = Song(source, str(link))
-        #await self.music.add_song(song)
-        #await ctx.send('Enqueued {}'.format(str(source)))
-
-        
-        ##self.player = self.voice.create_ytdl_player(link)
-        
-        #await ctx.message.add_reaction('▶️')
-        #await ctx.message.add_reaction('⏯')
-        #await ctx.message.add_reaction('⏩')
-        #await ctx.message.add_reaction('⏹')
-
-        #try:
-        #    # Timeout parameter is optional but sometimes can be useful
-        #    await self.bot.wait_for('reaction_add', check=self.check)
-        #except asyncio.TimeoutError:
-        #    pass
-
-    @commands.command(name='test')
-    async def test(self, ctx):
-        await self.music.pause()
-
-    def check(self, reaction, user):
-        result = asyncio.create_task(self.run_check(reaction, user)) # run the async function
-        return result
-
-    async def run_check(self, reaction, user):
-        emoji = str(reaction.emoji)
-        if emoji == '⏯' and user != self.bot.user:
-            await self.music.pause()
-        if emoji == '⏹' and user != self.bot.user:
-            await self.music.stop()
-        if emoji == '▶️' and user != self.bot.user:
-            await self.music.resume()
-        if emoji == '⏩' and user != self.bot.user:
-            await self.music.skip()
-
     @commands.command()
     async def leave(self, ctx):
         await ctx.voice_client.disconnect()
@@ -138,18 +122,18 @@ class Commands(commands.Cog):
     async def _skip(self, ctx: commands.Context):
         """Skips the currently playing song."""
 
-        if self.music.is_playing:
-            self.music.skip()
-            await ctx.message.add_reaction('⏯')
+        if not ctx.voice_state.is_playing:
+            return await ctx.send('Not playing any music right now...')
+        else:
+            await ctx.voice_state.skip()
 
     @commands.command(name='pause')
     @commands.has_permissions(manage_guild=True)
     async def _pause(self, ctx: commands.Context):
         """Pauses the currently playing song."""
 
-        if not ctx.voice_state.is_playing and ctx.voice_state.voice.is_playing():
-            self.music.pause()
-            await ctx.message.add_reaction('⏯')
+        if ctx.voice_state.is_playing:
+            await ctx.voice_state.pause()
 
     @commands.command(name='resume')
     @commands.has_permissions(manage_guild=True)
@@ -157,8 +141,7 @@ class Commands(commands.Cog):
         """Resumes a currently paused song."""
 
         if not ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
-            ctx.voice_state.voice.resume()
-            await ctx.message.add_reaction('⏯')
+            await ctx.voice_state.resume()
 
     @commands.command(name='stop')
     @commands.has_permissions(manage_guild=True)
@@ -168,8 +151,7 @@ class Commands(commands.Cog):
         ctx.voice_state.songs.clear()
 
         if not ctx.voice_state.is_playing:
-            ctx.voice_state.voice.stop()
-            await ctx.message.add_reaction('⏹')
+            await ctx.voice_state.stop()
 
     @commands.command(name='volume')
     async def _volume(self, ctx: commands.Context, *, volume: int):
@@ -181,8 +163,14 @@ class Commands(commands.Cog):
         if 0 > volume > 100:
             return await ctx.send('Volume must be between 0 and 100')
 
-        self.music.volume = volume / 100
+        ctx.voice_state.volume = volume / 100
         await ctx.send('Volume of the player set to {}%'.format(volume))
+
+    @commands.command(name='now', aliases=['current', 'playing'])
+    async def _now(self, ctx: commands.Context):
+        """Displays the currently playing song."""
+
+        await ctx.send(embed=ctx.voice_state.current.create_embed())
 
     @join.before_invoke
     @play.before_invoke
@@ -197,8 +185,8 @@ class Commands(commands.Cog):
         if self.voice is None:
             self.voice = discord.utils.get(self.bot.voice_clients, guild=commands.Context.guild)
         
-        if self.music is None:
-            self.music = Music(self.bot, commands.Context, self.voice)
+        #if self.music is None:
+        #    self.music = Music(self.bot, commands.Context, self.voice)
 
     # Commands
     @commands.command(help='Simple check to verify bot is functioning properly')
