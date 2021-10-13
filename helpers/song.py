@@ -8,7 +8,7 @@ from helpers.ytld_helper import YTDLSource
 class Song:
     def __init__(self, source: YTDLSource, link: None):
         self.source = source
-
+        self.name = source.title
         self.link = link
         self.requester = source.requester
 

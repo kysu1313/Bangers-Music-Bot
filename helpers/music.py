@@ -51,8 +51,8 @@ class Music():
     async def add_song(self, song):
         await self.songs.put(song)
 
-    async def skip(self):
-        await self.voice.stop()
+    def skip(self):
+        self.voice.stop()
 
     async def stop(self):
         if self.voice.is_playing:
