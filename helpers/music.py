@@ -72,6 +72,10 @@ class Music():
     def skip(self):
         self.voice.stop()
 
+    async def stop(self):
+        if self.voice.is_playing:
+            await self.voice.stop()
+
     async def pause(self):
         if self.is_playing:
             await self.voice.pause()
