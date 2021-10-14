@@ -52,38 +52,37 @@ class Music():
         await self.songs.put(song)
 
     def skip(self):
-        self.voice.stop()
+        self._stop()
 
-    async def stop(self):
+    def _stop(self):
         if self.voice.is_playing:
-            await self.voice.stop()
+            self.voice.stop()
 
-    async def pause(self):
-        await self.voice.pause()
+    def pause(self):
+        self.voice.pause()
 
-    async def resume(self):
+    def resume(self):
         if not self.is_playing:
-            self.play_next_song()    
+            self.play_next_song()   
+        else:
+            self.voice.resume() 
 
     def play_next_song(self, error=None):
         self.next.set()        
 
     async def audio_player_task(self):
         while True:
-            #self.is_playing = False
             self.next.clear()
             if not self._loop:
                 try:
-                    #async with timeout(180):  # 3 minutes
                     self.current = await self.songs.get()
                 except asyncio.TimeoutError:
                     self.bot.loop.create_task(self.stop())
                     return
 
             self.current.source.volume = self._volume
-            self.voice.play(self.current.source, after=self.play_next_song)  # , after=self.play_next_song
+            self.voice.play(self.current.source, after=self.play_next_song)
             await self.add_reactions()
-            #self.is_playing = True
 
             await self.next.wait()
 

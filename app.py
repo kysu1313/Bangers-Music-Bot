@@ -1,6 +1,7 @@
 
 from discord.ext.commands import Bot
 from helpers.settings import Settings
+from helpers.saver import PlaylistSaver
 import discord
 import os
 import platform
@@ -37,6 +38,8 @@ async def on_ready():
     print(f"Discord.py API version: {discord.__version__}")
     print(f"Python version: {platform.python_version()}")
     print(f"Running on: {platform.system()} {platform.release()} ({os.name})")
+    saver = PlaylistSaver()
+    saver.create_tables()
     print("-------------------")
 
 @bot.event
