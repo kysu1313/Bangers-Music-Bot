@@ -25,3 +25,9 @@ class Song:
 
         return embed
 
+
+#    
+# 
+# page = 3 but len = 15
+# 
+#

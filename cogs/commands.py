@@ -4,6 +4,7 @@ from discord import client
 from discord.ext import commands
 import time
 from discord.utils import get
+from helpers.saver import PlaylistSaver
 from helpers.settings import Settings
 from helpers.music import Music
 from helpers.song import Song
@@ -72,13 +73,6 @@ class Commands(commands.Cog):
         except asyncio.TimeoutError:
             pass
 
-    #@commands.command(name='test')
-    #async def test(self, ctx):
-    #    current = ctx.voice_state.get_current()
-    #    embed = current.build_embed()
-    #    await current.source.channel.send(embed = embed)
-
-
     def check(self, reaction, ctx):
         result = asyncio.create_task(self.run_check(reaction, ctx)) # run the async function
         return result
@@ -87,19 +81,21 @@ class Commands(commands.Cog):
         emoji = str(reaction.emoji)
         if emoji == '⏯': # and ctx.user != self.bot.user:
             if ctx.voice_state.is_playing:
-                await ctx.voice_state.pause()
+                ctx.voice_state.pause()
             else:
-                await ctx.voice_state.resume()
+                ctx.voice_state.resume()
         if emoji == '⏹': # and ctx.user != self.bot.user:
-            await ctx.voice_state.stop()
+            ctx.voice_state.stop()
         if emoji == '⏩': # and ctx.user != self.bot.user:
-            await ctx.voice_state.skip()
+            ctx.voice_state.skip()
 
     @commands.command(name='play', help='Plays music from youtube link')
     async def play(self, ctx: commands.Context, *link):
         
         if not ctx.voice_state.voice:
-            await ctx.invoke(self.join)
+            channel = ctx.author.voice.channel
+            await ctx.send('Must invite bot to voice channel first. (Adding the bot to your channel now)')
+            await ctx.invoke(self.join, channel=channel)
 
         async with ctx.typing():
             try:
@@ -125,7 +121,7 @@ class Commands(commands.Cog):
         if not ctx.voice_state.is_playing:
             return await ctx.send('Not playing any music right now...')
         else:
-            await ctx.voice_state.skip()
+            ctx.voice_state.skip()
 
     @commands.command(name='pause')
     @commands.has_permissions(manage_guild=True)
@@ -133,60 +129,81 @@ class Commands(commands.Cog):
         """Pauses the currently playing song."""
 
         if ctx.voice_state.is_playing:
-            await ctx.voice_state.pause()
+            ctx.voice_state.pause()
 
     @commands.command(name='resume')
     @commands.has_permissions(manage_guild=True)
     async def _resume(self, ctx: commands.Context):
         """Resumes a currently paused song."""
 
-        if not ctx.voice_state.is_playing and ctx.voice_state.voice.is_paused():
-            await ctx.voice_state.resume()
+        if ctx.voice_state.voice.is_paused():
+            ctx.voice_state.resume()
 
     @commands.command(name='stop')
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Stops playing song and clears the queue."""
-
         ctx.voice_state.songs.clear()
-
         if not ctx.voice_state.is_playing:
             await ctx.voice_state.stop()
 
     @commands.command(name='volume')
     async def _volume(self, ctx: commands.Context, *, volume: int):
         """Sets the volume of the player."""
-
-        #if not self.music.is_playing:
-        #    return await ctx.send('Nothing being played at the moment.')
-
         if 0 > volume > 100:
             return await ctx.send('Volume must be between 0 and 100')
-
         ctx.voice_state.volume = volume / 100
         await ctx.send('Volume of the player set to {}%'.format(volume))
 
-    @commands.command(name='now', aliases=['current', 'playing'])
+    @commands.command(name='now', aliases=['show', 'current'])
     async def _now(self, ctx: commands.Context):
         """Displays the currently playing song."""
 
         await ctx.send(embed=ctx.voice_state.current.create_embed())
+
+    @commands.command(name='save', aliases=['like', 'favorite'])
+    async def save(self, ctx: commands.Context):
+        """Saves the currently playing song to user playlist."""
+        saver = PlaylistSaver()
+        user = ctx.author
+        song = ctx.voice_state.current
+        saver.save_song(user, song)
+        await ctx.send("{} - Saved {}".format(user.name, song.name))
+
+    @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites'])
+    async def songs(self, ctx: commands.Context, page=1):
+        """Displays a users playlist."""
+        pg_size = 10
+        saver = PlaylistSaver()
+        user = ctx.author
+        user_songs = saver.get_songs(user)
+        embed = discord.Embed(title=f'''{user.name}'s playlist (Page: {page})''',
+                               color=discord.Color.blurple())
+        songs_to_show = []
+        window = page*pg_size
+        if window > len(user_songs):
+            songs_to_show = user_songs[-pg_size:]
+        else:
+            songs_to_show = user_songs[window-10:window]
+        count = 1
+        for song in songs_to_show:
+            embed.add_field(name=f'{count}): {song[1]}', value=f'[Click]({song[2]})', inline=False)
+            count += 1
+        msg = await ctx.send(embed=embed)
+        reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
+        for i in range(1, count):
+            await msg.add_reaction(reacts[i-1])
 
     @join.before_invoke
     @play.before_invoke
     async def ensure_voice_state(self, ctx: commands.Context):
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandError('You are not connected to any voice channel.')
-
         if ctx.voice_client:
             if ctx.voice_client.channel != ctx.author.voice.channel:
                 raise commands.CommandError('Bot is already in a voice channel.')
-
         if self.voice is None:
             self.voice = discord.utils.get(self.bot.voice_clients, guild=commands.Context.guild)
-        
-        #if self.music is None:
-        #    self.music = Music(self.bot, commands.Context, self.voice)
 
     # Commands
     @commands.command(help='Simple check to verify bot is functioning properly')
