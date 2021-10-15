@@ -1,4 +1,5 @@
 import asyncio
+import random
 import discord
 from discord import client
 from discord.ext import commands
@@ -89,7 +90,7 @@ class Commands(commands.Cog):
         if emoji == '⏩': # and ctx.user != self.bot.user:
             ctx.voice_state.skip()
 
-    @commands.command(name='play', help='Plays music from youtube link')
+    @commands.command(name='play', help='Plays music from youtube link or playlist <!play -playlist>')
     async def play(self, ctx: commands.Context, *link):
         
         if not ctx.voice_state.voice:
@@ -97,16 +98,46 @@ class Commands(commands.Cog):
             await ctx.send('Must invite bot to voice channel first. (Adding the bot to your channel now)')
             await ctx.invoke(self.join, channel=channel)
 
-        async with ctx.typing():
-            try:
-                source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
-            except YTDLError as e:
-                await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
-            else:
-                song = Song(source, str(link))
+        if link[0] == '-playlist':
+            saver = PlaylistSaver()
+            user = ctx.author
+            user_songs = saver.get_songs(user)
+            if len(user_songs) > 0:
+                if '-shuffle' in str(link):
+                    random.shuffle(user_songs)
+                await ctx.send('''loading playlist''')
+                for s in user_songs:
+                    async with ctx.typing():
+                        try:
+                            source = await YTDLSource.create_source(ctx, str(s[2]), loop=self.bot.loop)
+                        except YTDLError as e:
+                            await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                        else:
+                            song = Song(source, str(s[2]))
 
-                await ctx.voice_state.songs.put(song)
-                await ctx.send('Enqueued {}'.format(str(source)))
+                            await ctx.voice_state.songs.put(song)
+                await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
+        else:
+            async with ctx.typing():
+                try:
+                    source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
+                except YTDLError as e:
+                    await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                else:
+                    song = Song(source, str(link))
+
+                    await ctx.voice_state.songs.put(song)
+                    await ctx.send('Enqueued {}'.format(str(source)))
+
+    @commands.command(name='clear', aliases=['empty'])
+    async def clear(self, ctx):
+        if not ctx.voice_state.voice:
+            channel = ctx.author.voice.channel
+            await ctx.send('You are not currently in a voice channel so you cant clear a playlist.')
+            return
+        ctx.voice_state.stop()
+        ctx.voice_state.songs.clear()
+        await ctx.send("Playlist cleared")
 
     @commands.command()
     async def leave(self, ctx):
@@ -143,6 +174,7 @@ class Commands(commands.Cog):
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Stops playing song and clears the queue."""
+
         ctx.voice_state.songs.clear()
         if not ctx.voice_state.is_playing:
             await ctx.voice_state.stop()
@@ -150,6 +182,7 @@ class Commands(commands.Cog):
     @commands.command(name='volume')
     async def _volume(self, ctx: commands.Context, *, volume: int):
         """Sets the volume of the player."""
+
         if 0 > volume > 100:
             return await ctx.send('Volume must be between 0 and 100')
         ctx.voice_state.volume = volume / 100
@@ -157,22 +190,33 @@ class Commands(commands.Cog):
 
     @commands.command(name='now', aliases=['show', 'current'])
     async def _now(self, ctx: commands.Context):
-        """Displays the currently playing song."""
+        """Displays the currently playing song and future playlist if it exists."""
 
-        await ctx.send(embed=ctx.voice_state.current.create_embed())
+        embed = ctx.voice_state.current.build_embed()
+        embed.add_field(name='Current Playlist:\n', value='------------', inline=False)
+        count = 1
+        for song in ctx.voice_state.songs.__iter__():
+            embed.add_field(name=f'{count}): {song.name}', value=f'[Click]({song.link})', inline=False)
+            count += 1
+        await ctx.send(embed=embed)
 
     @commands.command(name='save', aliases=['like', 'favorite'])
-    async def save(self, ctx: commands.Context):
+    async def save(self, ctx: commands.Context, playlist=None):
         """Saves the currently playing song to user playlist."""
+
         saver = PlaylistSaver()
         user = ctx.author
         song = ctx.voice_state.current
-        saver.save_song(user, song)
+        if playlist is not None:
+            result = saver.add_to_playlist(playlist, user, song)
+        else:
+            result = saver.save_song(user, song)
         await ctx.send("{} - Saved {}".format(user.name, song.name))
 
     @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites'])
     async def songs(self, ctx: commands.Context, page=1):
         """Displays a users playlist."""
+
         pg_size = 10
         saver = PlaylistSaver()
         user = ctx.author
@@ -194,9 +238,19 @@ class Commands(commands.Cog):
         for i in range(1, count):
             await msg.add_reaction(reacts[i-1])
 
+    @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist'])
+    async def makeplaylist(self, ctx: commands.Context, playlist_name):
+        """Saves the currently playing song to user playlist."""
+
+        saver = PlaylistSaver()
+        user = ctx.author
+        saver.create_playlist(playlist_name, user)
+        await ctx.send("{} - Created playlist {}".format(user.name, playlist_name))
+
     @join.before_invoke
     @play.before_invoke
     async def ensure_voice_state(self, ctx: commands.Context):
+        """Verify everything is setup before playing or joining a voice channel"""
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandError('You are not connected to any voice channel.')
         if ctx.voice_client:
