@@ -42,6 +42,9 @@ async def on_ready():
     saver.create_tables()
     print("-------------------")
 
+    #saver = PlaylistSaver()
+    #saver.get_all_songs('G Frsh - Panic Cord (Official Video) (prod. HUCCI) [@GFrSH] | Link Up TV')
+
 @bot.event
 async def on_command_completion(ctx):
     '''

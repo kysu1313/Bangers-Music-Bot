@@ -69,10 +69,10 @@ class Commands(commands.Cog):
             return
         ctx.voice_state.voice = await server.connect()
 
-        try:
-            await self.bot.wait_for('reaction_add', check=self.check)
-        except asyncio.TimeoutError:
-            pass
+        #try:
+        #    await self.bot.wait_for('reaction_add', check=self.check)
+        #except asyncio.TimeoutError:
+        #    pass
 
     def check(self, reaction, ctx):
         result = asyncio.create_task(self.run_check(reaction, ctx)) # run the async function
@@ -101,7 +101,10 @@ class Commands(commands.Cog):
         if link[0] == '-playlist':
             saver = PlaylistSaver()
             user = ctx.author
-            user_songs = saver.get_songs(user)
+            if len(link) >= 2:
+                user_songs = saver._get_plist(" ".join(link[1:]), user)
+            else:
+                user_songs = saver.get_songs(user)
             if len(user_songs) > 0:
                 if '-shuffle' in str(link):
                     random.shuffle(user_songs)
@@ -111,23 +114,24 @@ class Commands(commands.Cog):
                         try:
                             source = await YTDLSource.create_source(ctx, str(s[2]), loop=self.bot.loop)
                         except YTDLError as e:
-                            await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                            return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                         else:
                             song = Song(source, str(s[2]))
 
                             await ctx.voice_state.songs.put(song)
-                await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
+                return await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
+            return await ctx.send("You haven't liked any songs yet.")
         else:
             async with ctx.typing():
                 try:
                     source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
                 except YTDLError as e:
-                    await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                    return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                 else:
                     song = Song(source, str(link))
 
                     await ctx.voice_state.songs.put(song)
-                    await ctx.send('Enqueued {}'.format(str(source)))
+                    return await ctx.send('Enqueued {}'.format(str(source)))
 
     @commands.command(name='clear', aliases=['empty'])
     async def clear(self, ctx):
@@ -209,18 +213,33 @@ class Commands(commands.Cog):
         song = ctx.voice_state.current
         if playlist is not None:
             result = saver.add_to_playlist(playlist, user, song)
+            if result is None:
+                return await ctx.send(f"Failed to save song to playlist {playlist}")
         else:
             result = saver.save_song(user, song)
+            if result is None:
+                return await ctx.send("Failed to like song")
+
         await ctx.send("{} - Saved {}".format(user.name, song.name))
 
     @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites'])
-    async def songs(self, ctx: commands.Context, page=1):
+    async def songs(self, ctx: commands.Context, playlist=None, page=1):
         """Displays a users playlist."""
 
         pg_size = 10
         saver = PlaylistSaver()
         user = ctx.author
-        user_songs = saver.get_songs(user)
+        if playlist is not None:
+            user_songs = saver._get_plist(playlist, user)
+            if user_songs == None:
+                await ctx.send("That playlist doesn't exist.")
+                all_plsts = saver.__get_all_plsts(user)
+                if all_plsts == None:
+                    return await ctx.send("You don't have any playlists. Use '!makeplaylist <playlist-name>' to create one.")
+                else:
+                    return ctx.send(embed=self._create_embed(user, 'Playlists', all_plsts)) 
+        else: 
+            user_songs = saver.get_songs(user)
         embed = discord.Embed(title=f'''{user.name}'s playlist (Page: {page})''',
                                color=discord.Color.blurple())
         songs_to_show = []
@@ -237,6 +256,15 @@ class Commands(commands.Cog):
         reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
         for i in range(1, count):
             await msg.add_reaction(reacts[i-1])
+
+    def _create_embed(self, user, title, text):
+        embed = discord.Embed(title=f'''{user.name}'s {title}''',
+                               color=discord.Color.blurple())
+        count = 0
+        for i in text:
+            count += 1
+            embed.add_field(name=f'{count}): ', value=f' {i}', inline=False)
+        return embed
 
     @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist'])
     async def makeplaylist(self, ctx: commands.Context, playlist_name):
