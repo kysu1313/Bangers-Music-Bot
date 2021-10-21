@@ -9,9 +9,9 @@ from sqlite3.dbapi2 import Date
 class PlaylistSaver:
     def __init__(self):
         self.file_name = 'songs.db'
+        self.conn = sqlite3.connect(self.file_name)
 
     def create_tables(self):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
         cursor.execute('''
                 CREATE TABLE IF NOT EXISTS SONGS
@@ -36,27 +36,25 @@ class PlaylistSaver:
 
         
         self.conn.commit()
-        self.conn.close()
 
-    def get_all_songs(self, song):
-        self.conn = sqlite3.connect(self.file_name)
-        cursor = self.conn.cursor()
-        try:
-            cursor.execute("""
-                        INSERT INTO PLAYLISTS
-                        (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
-                        VALUES (NULL, ?, ?, ?);
-                """, ('playlist_name', '123456789', '2020-10-19',))
-            self.conn.commit()
-            return ""
-        except Exception as e:
-            self.conn.close()
-            return e
-        self.conn.close()
+    def get_all_songs(self, a, b, c):
+        #self.conn = sqlite3.connect(self.file_name)
+        #cursor = self.conn.cursor()
+        #try:
+        #    cursor.execute("""
+        #                INSERT INTO PLAYLISTS
+        #                (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
+        #                VALUES (NULL, ?, ?, ?);
+        #        """, (a, b, c,))
+        #    self.conn.commit()
+        #    return ""
+        #except Exception as e:
+        #    self.conn.close()
+        #    return e
+        #self.conn.close()
         return True
 
     def save_song(self, user, song):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
         try:
             cursor.execute("""SELECT * FROM SONGS WHERE 
@@ -72,55 +70,44 @@ class PlaylistSaver:
                     INSERT INTO SONGS
                     VALUES (NULL, ?, ?, NULL, ?);
             """, (song.name, song.source.url, str(user.id),))
-                    #(SONG_NAME, URL, USER_ID)
                 print("song added successfully")
             else:
                 print("song already saved")
-                self.conn.close()
                 return None
 
             self.conn.commit()
         except Exception as e:
             self.conn.close()
             return e
-        self.conn.close()
+        #self.conn.close()
         return True
 
     def create_playlist(self, playlist_name, user):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
 
         try:
-            #cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
-            #        (NAME = '{}' AND CREATED_BY_ID = '{}');""".format(playlist_name, str(user.id)))
-            #plist = cursor.fetchone()
-            entry = self._get_plist(playlist_name, user)
+            entry = self._get_plist(playlist_name, user.id)
 
             if entry is None:
                 cursor.execute("""
                         INSERT INTO PLAYLISTS
                         (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
                         VALUES (NULL, ?, ?, ?);
-                """, (playlist_name, str(user.id), str(datetime.now()),))
-
-            self.conn.commit()
+                """, (str(playlist_name), str(user.id), str(datetime.now()),))
+                self.conn.commit()
+                return True, ""
         except Exception as e:
-            self.conn.close()
-            return e
-        self.conn.close()
-        return True
+            pass
+            return None, e
+        return False, ""
 
     def add_to_playlist(self, playlist_name, user, song):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
         try:
-            #cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
-            #        (NAME = '{}' AND CREATED_BY_ID = '{}');""".format(playlist_name, str(user.id)))
-            #plist = cursor.fetchone()
-            plist = self._get_plist(playlist_name, user)
+            plist = self._get_plist(playlist_name, user.id)
 
             if plist is None:
-                return None
+                self.create_playlist(playlist_name, user)
             
             cursor.execute("""
                     INSERT INTO SONGS
@@ -129,36 +116,31 @@ class PlaylistSaver:
             """, (song.name, song.source.url, playlist_name, str(user.id),))
             self.conn.commit()
 
-            #cursor.execute("""SELECT last_insert_rowid() FROM SONGS;""")
             song_id = cursor.lastrowid
 
             cursor.execute("""
                     INSERT INTO PLAYLIST_SONGS
                     (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
-                    VALUES (NULL, {}, {})
+                    VALUES (NULL,  {}, {})
             """.format(plist[0], song_id))
             self.conn.commit()
         except Exception as e:
-            self.conn.close()
             return e
-        self.conn.close()
         return True
 
-    def _get_plist(self, playlist_name, user):
-        self.conn = sqlite3.connect(self.file_name)
+    def _get_plist(self, playlist_name, uid):
         cursor = self.conn.cursor()
         try:
-            cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
-                    NAME = ? AND CREATED_BY_ID = ?  
-                    COLLATE NOCASE;""", (playlist_name, str(user.id),))
-            plist = cursor.fetchone()
+            cursor.execute("""SELECT * FROM SONGS WHERE 
+                    PLAYLIST = ? AND USER_ID = ?  
+                    COLLATE NOCASE;""", (playlist_name, str(uid),))
+            plist = cursor.fetchall()
             return plist
         except Exception as e:
             pass
         return None
 
     def _get_all_plists(self, user):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
         try:
             cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
@@ -170,7 +152,6 @@ class PlaylistSaver:
         return None
 
     def get_songs(self, user):
-        self.conn = sqlite3.connect(self.file_name)
         cursor = self.conn.cursor()
         try:
             cursor.execute('''
@@ -179,8 +160,7 @@ class PlaylistSaver:
             ''', (str(user.id),))
             songs = list(cursor.fetchall())
         except Exception as e:
-            self.conn.close()
+            pass
             return e    
-        self.conn.close()
         return songs
         

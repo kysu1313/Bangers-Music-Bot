@@ -75,19 +75,18 @@ class Music():
             self.next.clear()
             if not self._loop:
                 try:
-                    self.current = await self.songs.get()
+                    self.current = (await self.songs.get())
                 except asyncio.TimeoutError:
                     self.bot.loop.create_task(self.stop())
                     return
-
-            self.current.source.volume = self._volume
-            self.voice.play(self.current.source, after=self.play_next_song)
+            curr = self.current[len(self.current)-1]
+            curr.source.volume = self._volume
+            self.voice.play(curr.source, after=self.play_next_song)
             await self.add_reactions()
-
             await self.next.wait()
 
     async def add_reactions(self):
-        msg = await self.current.source.channel.send(embed=self.current.build_embed())
+        msg = await self.current[len(self.current)-1].source.channel.send(embed=self.current[len(self.current)-1].build_embed())
         await msg.add_reaction('▶️')
         await msg.add_reaction('⏯')
         await msg.add_reaction('⏩')

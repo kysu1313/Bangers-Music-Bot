@@ -16,10 +16,8 @@ import random
 class VoiceError(Exception):
     pass
 
-
 class YTDLError(Exception):
     pass
-
 
 class YTDLSource(discord.PCMVolumeTransformer):
     YTDL_OPTIONS = {

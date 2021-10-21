@@ -1,14 +1,20 @@
 import asyncio
 import itertools
 import random
+from asyncio import PriorityQueue
 from helpers.ytld_helper import YTDLSource
+import heapq
 
-class SongQueue(asyncio.Queue):
+class SongQueue(asyncio.PriorityQueue):
     def __getitem__(self, item):
         if isinstance(item, slice):
             return list(itertools.islice(self._queue, item.start, item.stop, item.step))
         else:
             return self._queue[item]
+
+    #@property
+    #def _put(self, item, heappush=heapq.heappush):
+    #    heappush(self._queue, item)
 
     def __iter__(self):
         return self._queue.__iter__()

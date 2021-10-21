@@ -9,7 +9,7 @@ from helpers.saver import PlaylistSaver
 from helpers.settings import Settings
 from helpers.music import Music
 from helpers.song import Song
-from helpers.ytld_helper import YTDLError, YTDLSource
+from helpers.ytld_helper import VoiceError, YTDLError, YTDLSource
 import typing as t
 
 #client = discord.Client()
@@ -18,6 +18,15 @@ class AlreadyConnectedToChannel(commands.CommandError):
     pass
 
 class NoVoiceChannel(commands.CommandError):
+    pass
+
+class AudioPlayError(commands.CommandError):
+    pass
+
+class ClearQueueError(commands.CommandError):
+    pass
+
+class SkipSongError(commands.CommandError):
     pass
 
 class Commands(commands.Cog):
@@ -33,14 +42,20 @@ class Commands(commands.Cog):
         self.v_client = None
         
         self.voice_states = {}
+        self.curr_playlists = {}
+        self.last_playlist_shown = {}
+        self.curr_ctx = {}
 
     def get_voice_state(self, ctx: commands.Context):
-        state = self.voice_states.get(ctx.guild.id)
-        if not state:
-            state = Music(self.bot, ctx, self.voice)
-            self.voice_states[ctx.guild.id] = state
+        try:
+            state = self.voice_states.get(ctx.guild.id)
+            if not state:
+                state = Music(self.bot, ctx, self.voice)
+                self.voice_states[ctx.guild.id] = state
 
-        return state
+            return state
+        except Exception as e:
+            raise NoVoiceChannel("Unable to get current voice state.")
 
     async def cog_before_invoke(self, ctx: commands.Context):
         ctx.voice_state = self.get_voice_state(ctx)
@@ -63,12 +78,16 @@ class Commands(commands.Cog):
 
     @commands.command(name='join', help='Join voice channel')
     async def join(self, ctx, *, channel: t.Optional[discord.VoiceChannel]):
-        server = ctx.author.voice.channel
-        if ctx.voice_state.voice:
-            await ctx.voice_state.voice.move_to(server)
-            return
-        ctx.voice_state.voice = await server.connect()
-
+        try:
+            server = ctx.author.voice.channel
+            if ctx.voice_state.voice:
+                await ctx.voice_state.voice.move_to(server)
+                return
+            ctx.voice_state.voice = await server.connect()
+            self.voice_states[server.id] = ctx.voice_state
+        except Exception as e:
+            pass
+            #raise NoVoiceChannel("No avaliable voice channel.")
         #try:
         #    await self.bot.wait_for('reaction_add', check=self.check)
         #except asyncio.TimeoutError:
@@ -92,56 +111,116 @@ class Commands(commands.Cog):
 
     @commands.command(name='play', help='Plays music from youtube link or playlist <!play -playlist>')
     async def play(self, ctx: commands.Context, *link):
-        
-        if not ctx.voice_state.voice:
-            channel = ctx.author.voice.channel
-            await ctx.send('Must invite bot to voice channel first. (Adding the bot to your channel now)')
-            await ctx.invoke(self.join, channel=channel)
-
-        if link[0] == '-playlist':
-            saver = PlaylistSaver()
-            user = ctx.author
-            if len(link) >= 2:
-                user_songs = saver._get_plist(" ".join(link[1:]), user)
-            else:
-                user_songs = saver.get_songs(user)
-            if len(user_songs) > 0:
-                if '-shuffle' in str(link):
-                    random.shuffle(user_songs)
-                await ctx.send('''loading playlist''')
-                for s in user_songs:
-                    async with ctx.typing():
-                        try:
-                            source = await YTDLSource.create_source(ctx, str(s[2]), loop=self.bot.loop)
-                        except YTDLError as e:
-                            return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
-                        else:
-                            song = Song(source, str(s[2]))
-
-                            await ctx.voice_state.songs.put(song)
-                return await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
-            return await ctx.send("You haven't liked any songs yet.")
-        else:
-            async with ctx.typing():
-                try:
-                    source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
-                except YTDLError as e:
-                    return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+        try:
+            if not ctx.voice_state.voice:
+                channel = ctx.author.voice.channel
+                await ctx.send('Must invite bot to voice channel first. (Adding the bot to your channel now)')
+                await ctx.invoke(self.join, channel=channel)
+            
+            #self.voice_state[ctx.guild.id] = ctx.voice_state
+            self.curr_playlists[ctx.guild.id] = "--NONE--"
+            if link[0] == '-playlist':
+                saver = PlaylistSaver()
+                user = ctx.author
+                if len(link) >= 2:
+                    user_songs = saver._get_plist(" ".join(link[1:]), user.id)
                 else:
-                    song = Song(source, str(link))
+                    user_songs = saver.get_songs(user)
+                if len(user_songs) > 0:
+                    ctx.playlist = " ".join(link[1:])
+                    self.curr_playlists[ctx.guild.id] = " ".join(link[1:])
+                    if '-shuffle' in str(link):
+                        random.shuffle(user_songs)
+                    await ctx.send('''loading playlist''')
+                    for s in user_songs:
+                        async with ctx.typing():
+                            try:
+                                source = await YTDLSource.create_source(ctx, str(s[2]), loop=self.bot.loop)
+                            except YTDLError as e:
+                                return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                            else:
+                                song = Song(source, str(s[2]))
 
-                    await ctx.voice_state.songs.put(song)
-                    return await ctx.send('Enqueued {}'.format(str(source)))
+                                await ctx.voice_state.songs.put(song)
+                    return await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
+                return await ctx.send("You haven't liked any songs yet.")
+            else:
+                async with ctx.typing():
+                    try:
+                        source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
+                    except YTDLError as e:
+                        return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+                    else:
+                        song = Song(source, str(link))
+
+                        await ctx.voice_state.songs.put(song)
+                        return await ctx.send('Enqueued {}'.format(str(source)))
+        except Exception as e:
+            raise AudioPlayError(f"Something went wrong: {e}")
+
+    async def _play_song(self, idx: int, ctx: commands.Context):
+        try:
+            saver = PlaylistSaver()
+            curr = self.last_playlist_shown[ctx.guild.id]
+            curr_ctx = self.curr_ctx[ctx.guild.id]
+            song_name = curr.split('.')[0]
+            uid = curr.split('.')[1]
+            curr_playlist = saver._get_plist(song_name, uid)
+            sng = curr_playlist[idx + 1]
+            song = None
+            try:
+                source = await YTDLSource.create_source(curr_ctx, str(sng[2]), loop=self.bot.loop)
+            except YTDLError as e:
+                return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
+            else:
+                song = Song(source, str(sng[2]))
+            voice = self.voice_states[ctx.guild.id]
+            await voice.songs.put((0, song))
+        except Exception as e:
+            print(e)
+            pass
+
+    #@play.after_invoke
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction, ctx):
+        if not ctx.bot:
+            emoji = str(reaction.emoji)
+            voice = self.voice_states[ctx.guild.id]
+            
+            reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
+            if emoji in reacts:
+                idx = reacts.index(emoji)
+                await self._play_song(idx, ctx)
+            
+            if emoji == '⏯':
+                if voice.is_playing:
+                    voice.pause()
+            if emoji == '⏹':
+                voice.stop()
+            if emoji == '⏩':
+                voice.skip()
+
+    @commands.Cog.listener()
+    async def on_reaction_remove(self, reaction, ctx):
+        if not ctx.bot:     #checks if message is from bot
+            emoji = str(reaction.emoji)
+            voice = self.voice_states[ctx.guild.id]
+            if emoji == '⏯':
+                if voice.is_playing:
+                    voice.resume()
 
     @commands.command(name='clear', aliases=['empty'])
     async def clear(self, ctx):
-        if not ctx.voice_state.voice:
-            channel = ctx.author.voice.channel
-            await ctx.send('You are not currently in a voice channel so you cant clear a playlist.')
-            return
-        ctx.voice_state.stop()
-        ctx.voice_state.songs.clear()
-        await ctx.send("Playlist cleared")
+        try:
+            if not ctx.voice_state.voice:
+                channel = ctx.author.voice.channel
+                await ctx.send('You are not currently in a voice channel so you cant clear a playlist.')
+                return
+            ctx.voice_state.stop()
+            ctx.voice_state.songs.clear()
+            await ctx.send("Playlist cleared")
+        except Exception as e:
+            raise ClearQueueError(f"Unable to clear current queue {e}")
 
     @commands.command()
     async def leave(self, ctx):
@@ -153,109 +232,139 @@ class Commands(commands.Cog):
     async def _skip(self, ctx: commands.Context):
         """Skips the currently playing song."""
 
-        if not ctx.voice_state.is_playing:
-            return await ctx.send('Not playing any music right now...')
-        else:
-            ctx.voice_state.skip()
+        try:
+            if not ctx.voice_state.is_playing:
+                return await ctx.send('Not playing any music right now...')
+            else:
+                ctx.voice_state.skip()
+        except Exception as e:
+            raise SkipSongError(f"Unable to skip the currently playing song: {e}")
 
     @commands.command(name='pause')
     @commands.has_permissions(manage_guild=True)
     async def _pause(self, ctx: commands.Context):
         """Pauses the currently playing song."""
-
-        if ctx.voice_state.is_playing:
-            ctx.voice_state.pause()
+        try:
+            if ctx.voice_state.is_playing:
+                ctx.voice_state.pause()
+        except Exception as e:
+            await ctx.send(f"Error pausing track: {e}")
+            pass
 
     @commands.command(name='resume')
     @commands.has_permissions(manage_guild=True)
     async def _resume(self, ctx: commands.Context):
         """Resumes a currently paused song."""
-
-        if ctx.voice_state.voice.is_paused():
-            ctx.voice_state.resume()
+        try:
+            if ctx.voice_state.voice.is_paused():
+                ctx.voice_state.resume()
+        except Exception as e:
+            await ctx.send(f"Error resuming track: {e}")
+            pass
 
     @commands.command(name='stop')
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Stops playing song and clears the queue."""
 
-        ctx.voice_state.songs.clear()
-        if not ctx.voice_state.is_playing:
-            await ctx.voice_state.stop()
+        try:
+            ctx.voice_state.songs.clear()
+            if not ctx.voice_state.is_playing:
+                await ctx.voice_state.stop()
+        except Exception as e:
+            await ctx.send(f"Error stopping track: {e}")
+            pass
 
     @commands.command(name='volume')
     async def _volume(self, ctx: commands.Context, *, volume: int):
         """Sets the volume of the player."""
 
-        if 0 > volume > 100:
-            return await ctx.send('Volume must be between 0 and 100')
-        ctx.voice_state.volume = volume / 100
-        await ctx.send('Volume of the player set to {}%'.format(volume))
+        try:
+            if 0 > volume > 100:
+                return await ctx.send('Volume must be between 0 and 100')
+            ctx.voice_state.volume = volume / 100
+            await ctx.send('Volume of the player set to {}%'.format(volume))
+        except Exception as e:
+            await ctx.send(f"Error setting volume: {e}")
+            pass
 
     @commands.command(name='now', aliases=['show', 'current'])
     async def _now(self, ctx: commands.Context):
         """Displays the currently playing song and future playlist if it exists."""
 
-        embed = ctx.voice_state.current.build_embed()
-        embed.add_field(name='Current Playlist:\n', value='------------', inline=False)
-        count = 1
-        for song in ctx.voice_state.songs.__iter__():
-            embed.add_field(name=f'{count}): {song.name}', value=f'[Click]({song.link})', inline=False)
-            count += 1
-        await ctx.send(embed=embed)
+        try:
+            embed = ctx.voice_state.current.build_embed()
+            embed.add_field(name='Current Playlist:\n', value='------------', inline=False)
+            count = 1
+            for song in ctx.voice_state.songs.__iter__():
+                embed.add_field(name=f'{count}): {song.name}', value=f'[Click]({song.link})', inline=False)
+                count += 1
+            await ctx.send(embed=embed)
+        except Exception as e:
+            await ctx.send(f"Error showing current tracks: {e}")
+            pass
 
     @commands.command(name='save', aliases=['like', 'favorite'])
     async def save(self, ctx: commands.Context, playlist=None):
         """Saves the currently playing song to user playlist."""
 
-        saver = PlaylistSaver()
-        user = ctx.author
-        song = ctx.voice_state.current
-        if playlist is not None:
-            result = saver.add_to_playlist(playlist, user, song)
-            if result is None:
-                return await ctx.send(f"Failed to save song to playlist {playlist}")
-        else:
-            result = saver.save_song(user, song)
-            if result is None:
-                return await ctx.send("Failed to like song")
-
-        await ctx.send("{} - Saved {}".format(user.name, song.name))
+        try:
+            saver = PlaylistSaver()
+            user = ctx.author
+            song = ctx.voice_state.current
+            if playlist is not None:
+                result = saver.add_to_playlist(playlist, user, song)
+                if result is None:
+                    return await ctx.send(f"Failed to save song to playlist {playlist}")
+            else:
+                result = saver.add_to_playlist('likes', user, song)
+                if result is None:
+                    return await ctx.send("Failed to like song")
+            await ctx.send("{} - Saved {}".format(user.name, song.name))
+        except Exception as e:
+            await ctx.send(f"Error saving current song: {e}")
+            pass
 
     @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites'])
     async def songs(self, ctx: commands.Context, playlist=None, page=1):
         """Displays a users playlist."""
 
-        pg_size = 10
-        saver = PlaylistSaver()
-        user = ctx.author
-        if playlist is not None:
-            user_songs = saver._get_plist(playlist, user)
-            if user_songs == None:
-                await ctx.send("That playlist doesn't exist.")
-                all_plsts = saver.__get_all_plsts(user)
-                if all_plsts == None:
-                    return await ctx.send("You don't have any playlists. Use '!makeplaylist <playlist-name>' to create one.")
-                else:
-                    return ctx.send(embed=self._create_embed(user, 'Playlists', all_plsts)) 
-        else: 
-            user_songs = saver.get_songs(user)
-        embed = discord.Embed(title=f'''{user.name}'s playlist (Page: {page})''',
-                               color=discord.Color.blurple())
-        songs_to_show = []
-        window = page*pg_size
-        if window > len(user_songs):
-            songs_to_show = user_songs[-pg_size:]
-        else:
-            songs_to_show = user_songs[window-10:window]
-        count = 1
-        for song in songs_to_show:
-            embed.add_field(name=f'{count}): {song[1]}', value=f'[Click]({song[2]})', inline=False)
-            count += 1
-        msg = await ctx.send(embed=embed)
-        reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
-        for i in range(1, count):
-            await msg.add_reaction(reacts[i-1])
+        try:
+            self.curr_ctx[ctx.guild.id] = ctx
+            pg_size = 10
+            saver = PlaylistSaver()
+            user = ctx.author
+            if playlist is not None:
+                user_songs = saver._get_plist(playlist, user.id)
+                if user_songs == None:
+                    await ctx.send("That playlist doesn't exist.")
+                    all_plsts = saver._get_all_plists(user)
+                    if all_plsts == None:
+                        return await ctx.send("You don't have any playlists. Use '!makeplaylist <playlist-name>' to create one.")
+                    else:
+                        return ctx.send(embed=self._create_embed(user, 'Playlists', all_plsts)) 
+            else: 
+                user_songs = saver.get_songs(user)
+            self.last_playlist_shown[ctx.guild.id] = (playlist if playlist is not None else "likes")+"."+str(ctx.author.id)
+            embed = discord.Embed(title=f'''{user.name}'s {'playlist' if playlist is None else playlist} (Page: {page})''',
+                                color=discord.Color.blurple())
+            songs_to_show = []
+            window = page*pg_size
+            if window > len(user_songs):
+                songs_to_show = user_songs[-pg_size:]
+            else:
+                songs_to_show = user_songs[window-10:window]
+            count = 1
+            for song in songs_to_show:
+                embed.add_field(name=f'{count}): {song[1]}', value=f'[Click]({song[2]})', inline=False)
+                count += 1
+            msg = await ctx.send(embed=embed)
+            reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
+            for i in range(1, count):
+                await msg.add_reaction(reacts[i-1])
+        except Exception as e:
+            await ctx.send(f"Error displaying playlist: {e}")
+            pass
 
     def _create_embed(self, user, title, text):
         embed = discord.Embed(title=f'''{user.name}'s {title}''',
@@ -268,12 +377,20 @@ class Commands(commands.Cog):
 
     @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist'])
     async def makeplaylist(self, ctx: commands.Context, playlist_name):
-        """Saves the currently playing song to user playlist."""
+        """Creates new plalist."""
 
-        saver = PlaylistSaver()
-        user = ctx.author
-        saver.create_playlist(playlist_name, user)
-        await ctx.send("{} - Created playlist {}".format(user.name, playlist_name))
+        try:
+            saver = PlaylistSaver()
+            user = ctx.author
+            res, err = saver.create_playlist(playlist_name, user)
+            if res is False:
+                return await ctx.send(f"You already have a playlist named {playlist_name}")
+            elif res is None:
+                return await ctx.send(f"Error: {err}")
+            return await ctx.send("{} - Created playlist {}".format(user.name, playlist_name))
+        except Exception as e:
+            await ctx.send(f"Error creating playlist: {e}")
+            pass
 
     @join.before_invoke
     @play.before_invoke
