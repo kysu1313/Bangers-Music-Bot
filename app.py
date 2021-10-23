@@ -29,7 +29,7 @@ DOCKER = True
 
 intents = discord.Intents.all()
 client = discord.Client()
-bot = Bot(command_prefix='!', intents=intents)
+bot = Bot(command_prefix='$', intents=intents)
 
 
 @bot.event

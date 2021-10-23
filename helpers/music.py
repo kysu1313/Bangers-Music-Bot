@@ -27,12 +27,6 @@ class Music():
 
         self.audio_player = bot.loop.create_task(self.audio_player_task())
 
-    # TEST SONGS
-    # !play https://www.youtube.com/watch?v=mzB1VGEGcSU
-    # !play https://www.youtube.com/watch?v=aIHF7u9Wwiw
-    # !play https://www.youtube.com/watch?v=5gga8E43clk
-    # !play https://www.youtube.com/watch?v=foE1mO2yM04
-
     def get_current(self):
         return self.current
 
@@ -43,6 +37,14 @@ class Music():
     @volume.setter
     def volume(self, value: float):
         self._volume = value
+
+    @property
+    def loop(self):
+        return self._loop
+
+    @loop.setter
+    def loop(self, value: bool):
+        self._loop = value
 
     @property
     def is_playing(self):
@@ -79,18 +81,19 @@ class Music():
                 except asyncio.TimeoutError:
                     self.bot.loop.create_task(self.stop())
                     return
-            curr = self.current[len(self.current)-1]
+            curr = self.current[1] # len(self.current)-1
             curr.source.volume = self._volume
             self.voice.play(curr.source, after=self.play_next_song)
             await self.add_reactions()
             await self.next.wait()
 
     async def add_reactions(self):
-        msg = await self.current[len(self.current)-1].source.channel.send(embed=self.current[len(self.current)-1].build_embed())
+        msg = await self.current[1].source.channel.send(embed=self.current[1].build_embed())
         await msg.add_reaction('▶️')
         await msg.add_reaction('⏯')
         await msg.add_reaction('⏩')
         await msg.add_reaction('⏹')
+        await msg.add_reaction('❤️')
 
     def toggle_next(self):
         self.ctx.loop.call_soon_threadsafe(self.next.set)
@@ -100,9 +103,5 @@ class Music():
             player = self.queues[id].pop(0)
             self.players[id] = player
             player.start()
-
-    # !play https://www.youtube.com/watch?v=aIHF7u9Wwiw
-    # !play https://www.youtube.com/watch?v=5gga8E43clk
-    # !play https://www.youtube.com/watch?v=foE1mO2yM04
 
 
