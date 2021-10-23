@@ -4,6 +4,9 @@ import discord
 from discord import client
 from discord.ext import commands
 import time
+import humanize
+from datetime import datetime as dt
+import datetime
 from discord.utils import get
 from helpers.saver import PlaylistSaver
 from helpers.settings import Settings
@@ -13,6 +16,7 @@ from helpers.ytld_helper import VoiceError, YTDLError, YTDLSource
 import typing as t
 
 #client = discord.Client()
+PLAYLIST_PREFIXES = ['-playlist', '-plst', '-p', '-pl']
 
 class AlreadyConnectedToChannel(commands.CommandError):
     pass
@@ -40,7 +44,8 @@ class Commands(commands.Cog):
         self.voice = None
         self.voice_client = None
         self.v_client = None
-        
+
+        self.curr_plst_pg = {}
         self.voice_states = {}
         self.curr_playlists = {}
         self.last_playlist_shown = {}
@@ -87,27 +92,6 @@ class Commands(commands.Cog):
             self.voice_states[server.id] = ctx.voice_state
         except Exception as e:
             pass
-            #raise NoVoiceChannel("No avaliable voice channel.")
-        #try:
-        #    await self.bot.wait_for('reaction_add', check=self.check)
-        #except asyncio.TimeoutError:
-        #    pass
-
-    def check(self, reaction, ctx):
-        result = asyncio.create_task(self.run_check(reaction, ctx)) # run the async function
-        return result
-
-    async def run_check(self, reaction, ctx):
-        emoji = str(reaction.emoji)
-        if emoji == '⏯': # and ctx.user != self.bot.user:
-            if ctx.voice_state.is_playing:
-                ctx.voice_state.pause()
-            else:
-                ctx.voice_state.resume()
-        if emoji == '⏹': # and ctx.user != self.bot.user:
-            ctx.voice_state.stop()
-        if emoji == '⏩': # and ctx.user != self.bot.user:
-            ctx.voice_state.skip()
 
     @commands.command(name='play', help='Plays music from youtube link or playlist <!play -playlist>')
     async def play(self, ctx: commands.Context, *link):
@@ -119,7 +103,13 @@ class Commands(commands.Cog):
             
             #self.voice_state[ctx.guild.id] = ctx.voice_state
             self.curr_playlists[ctx.guild.id] = "--NONE--"
-            if link[0] == '-playlist':
+            shuffle = False
+            if link[0] in PLAYLIST_PREFIXES:
+                #link = link.split()
+                if '-shuffle' in str(link):
+                    link.pop(link.index('-shuffle'))
+                    shuffle = True
+                shuffle = (True if '-shuffle' in str(link) else False)
                 saver = PlaylistSaver()
                 user = ctx.author
                 if len(link) >= 2:
@@ -129,7 +119,7 @@ class Commands(commands.Cog):
                 if len(user_songs) > 0:
                     ctx.playlist = " ".join(link[1:])
                     self.curr_playlists[ctx.guild.id] = " ".join(link[1:])
-                    if '-shuffle' in str(link):
+                    if shuffle:
                         random.shuffle(user_songs)
                     await ctx.send('''loading playlist''')
                     for s in user_songs:
@@ -140,8 +130,8 @@ class Commands(commands.Cog):
                                 return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                             else:
                                 song = Song(source, str(s[2]))
-
-                                await ctx.voice_state.songs.put(song)
+                                queue_pos = ctx.voice_state.songs._unfinished_tasks
+                                await ctx.voice_state.songs.put((queue_pos+1, song))
                     return await ctx.send('''Enqueued {}'s playlist'''.format(user.name))
                 return await ctx.send("You haven't liked any songs yet.")
             else:
@@ -152,13 +142,17 @@ class Commands(commands.Cog):
                         return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                     else:
                         song = Song(source, str(link))
-
-                        await ctx.voice_state.songs.put(song)
+                        queue_pos = ctx.voice_state.songs._unfinished_tasks
+                        await ctx.voice_state.songs.put((queue_pos+1, song))
                         return await ctx.send('Enqueued {}'.format(str(source)))
         except Exception as e:
             raise AudioPlayError(f"Something went wrong: {e}")
 
     async def _play_song(self, idx: int, ctx: commands.Context):
+        """ 
+        Play a song by reacting to the !playlist command. 
+        Automatically places the song to play next in the queue.
+         """
         try:
             saver = PlaylistSaver()
             curr = self.last_playlist_shown[ctx.guild.id]
@@ -175,6 +169,7 @@ class Commands(commands.Cog):
             else:
                 song = Song(source, str(sng[2]))
             voice = self.voice_states[ctx.guild.id]
+            #queue_pos = voice.songs.__len__()
             await voice.songs.put((0, song))
         except Exception as e:
             print(e)
@@ -199,6 +194,16 @@ class Commands(commands.Cog):
                 voice.stop()
             if emoji == '⏩':
                 voice.skip()
+            if emoji == '❤️':
+                await self.reaction_save(reaction.message.author, ctx, playlist=None)
+            if emoji == '🔀':
+                await self.shuffle(ctx)
+            if emoji == '🔂':
+                await self.repeat(ctx)
+            if emoji == '⬅️':
+                await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]-1)
+            if emoji == '➡️':
+                await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]+1)
 
     @commands.Cog.listener()
     async def on_reaction_remove(self, reaction, ctx):
@@ -239,6 +244,17 @@ class Commands(commands.Cog):
                 ctx.voice_state.skip()
         except Exception as e:
             raise SkipSongError(f"Unable to skip the currently playing song: {e}")
+
+    @commands.command(name='loop')
+    @commands.has_permissions(manage_guild=True)
+    async def loop(self, ctx: commands.Context):
+        """Pauses the currently playing song."""
+        try:
+            if ctx.voice_state.is_playing:
+                ctx.voice_state.loop(not ctx.voice_state.loop)
+        except Exception as e:
+            await ctx.send(f"Error pausing track: {e}")
+            pass
 
     @commands.command(name='pause')
     @commands.has_permissions(manage_guild=True)
@@ -293,7 +309,8 @@ class Commands(commands.Cog):
         """Displays the currently playing song and future playlist if it exists."""
 
         try:
-            embed = ctx.voice_state.current.build_embed()
+            sng = ctx.voice_state.current[1]
+            embed = sng.build_embed()
             embed.add_field(name='Current Playlist:\n', value='------------', inline=False)
             count = 1
             for song in ctx.voice_state.songs.__iter__():
@@ -311,7 +328,7 @@ class Commands(commands.Cog):
         try:
             saver = PlaylistSaver()
             user = ctx.author
-            song = ctx.voice_state.current
+            song = ctx.voice_state.current[1]
             if playlist is not None:
                 result = saver.add_to_playlist(playlist, user, song)
                 if result is None:
@@ -325,12 +342,33 @@ class Commands(commands.Cog):
             await ctx.send(f"Error saving current song: {e}")
             pass
 
-    @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites'])
+    async def reaction_save(self, user, ctx: commands.Context, playlist=None):
+        """Saves the currently playing song to user playlist."""
+
+        try:
+            saver = PlaylistSaver()
+            #user = ctx.author
+            song = ctx.voice_state.current[1]
+            if playlist is not None:
+                result = saver.add_to_playlist(playlist, user, song)
+                if result is None:
+                    return await ctx.send(f"Failed to save song to playlist {playlist}")
+            else:
+                result = saver.add_to_playlist('likes', user, song)
+                if result is None:
+                    return await ctx.send("Failed to like song")
+            await ctx.send("{} - Saved {}".format(user.name, song.name))
+        except Exception as e:
+            await ctx.send(f"Error saving current song: {e}")
+            pass
+
+    @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites', 'likes'])
     async def songs(self, ctx: commands.Context, playlist=None, page=1):
         """Displays a users playlist."""
 
         try:
             self.curr_ctx[ctx.guild.id] = ctx
+            self.curr_plst_pg[ctx.guild.id] = page
             pg_size = 10
             saver = PlaylistSaver()
             user = ctx.author
@@ -359,12 +397,43 @@ class Commands(commands.Cog):
                 embed.add_field(name=f'{count}): {song[1]}', value=f'[Click]({song[2]})', inline=False)
                 count += 1
             msg = await ctx.send(embed=embed)
-            reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
+            reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟']
             for i in range(1, count):
                 await msg.add_reaction(reacts[i-1])
+            #if count >= 1:
+            #    await msg.add_reaction('⬅️')
+            #    await msg.add_reaction('➡️')
         except Exception as e:
             await ctx.send(f"Error displaying playlist: {e}")
             pass
+
+    @commands.command(name='playlists', aliases=['myplaylists', 'mylists', 'plsts'])
+    async def playlists(self, ctx: commands.Context):
+        """Displays a users playlists."""
+
+        try:
+            saver = PlaylistSaver()
+            user = ctx.author
+            all_plsts = saver._get_all_plists(user)
+            if all_plsts == None:
+                return await ctx.send("You don't have any playlists. Use '!makeplaylist <playlist-name>' to create one.")
+            else:
+                return await ctx.send(embed=self._create_playlist_embed(user, 'Playlists', all_plsts)) 
+        except Exception as e:
+            await ctx.send(f"Error displaying playlist: {e}")
+            pass
+
+    def _create_playlist_embed(self, user, title, text):
+        embed = discord.Embed(title=f'''{user.name}'s {title}''',
+                               color=discord.Color.blurple())
+        count = 0
+        for i in text:
+            count += 1
+            #dt_obj = dt.strptime(i[3],'%Y-%m-%d %H:%M:%S.%f')
+            xdt = dt.strptime(i[3],'%Y-%m-%d %H:%M:%S.%f').replace(microsecond=0)
+            days = humanize.naturaldate(datetime.date(xdt.year, xdt.month, xdt.day))
+            embed.add_field(name=f'{count}): {i[1]}', value=f' Date Created: {days}', inline=False)
+        return embed
 
     def _create_embed(self, user, title, text):
         embed = discord.Embed(title=f'''{user.name}'s {title}''',

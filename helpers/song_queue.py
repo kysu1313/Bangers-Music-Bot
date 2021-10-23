@@ -13,8 +13,8 @@ class SongQueue(asyncio.PriorityQueue):
             return self._queue[item]
 
     #@property
-    #def _put(self, item, heappush=heapq.heappush):
-    #    heappush(self._queue, item)
+    #def _put(self, item):
+    #    self.put(self._queue, item)
 
     def __iter__(self):
         return self._queue.__iter__()

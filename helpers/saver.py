@@ -88,7 +88,7 @@ class PlaylistSaver:
         try:
             entry = self._get_plist(playlist_name, user.id)
 
-            if entry is None:
+            if entry is None or len(entry) == 0:
                 cursor.execute("""
                         INSERT INTO PLAYLISTS
                         (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
