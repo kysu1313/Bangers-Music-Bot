@@ -17,6 +17,7 @@ import typing as t
 
 #client = discord.Client()
 PLAYLIST_PREFIXES = ['-playlist', '-plst', '-p', '-pl']
+SHUFFLE_PREFIXES = ['-shuffle', '-s', '-shuff', '-shuf', '-random']
 
 class AlreadyConnectedToChannel(commands.CommandError):
     pass
@@ -93,7 +94,12 @@ class Commands(commands.Cog):
         except Exception as e:
             pass
 
-    @commands.command(name='play', help='Plays music from youtube link or playlist <!play -playlist>')
+    @commands.command(name='play',
+         help="""Plays music from youtube link or playlist\n 
+         Usage:\n
+         !play <song description or link>\n
+         !play -playlist <playlist name>\n
+         !play -p <playlist name> -shuffle""")
     async def play(self, ctx: commands.Context, *link):
         try:
             if not ctx.voice_state.voice:
@@ -103,22 +109,24 @@ class Commands(commands.Cog):
             
             #self.voice_state[ctx.guild.id] = ctx.voice_state
             self.curr_playlists[ctx.guild.id] = "--NONE--"
-            shuffle = False
             if link[0] in PLAYLIST_PREFIXES:
-                #link = link.split()
-                if '-shuffle' in str(link):
-                    link.pop(link.index('-shuffle'))
-                    shuffle = True
-                shuffle = (True if '-shuffle' in str(link) else False)
+                shuffle = any(x in link for x in SHUFFLE_PREFIXES)
                 saver = PlaylistSaver()
                 user = ctx.author
-                if len(link) >= 2:
-                    user_songs = saver._get_plist(" ".join(link[1:]), user.id)
+                playlist_name = link[1] if len(link) >= 1 else 'likes'
+                if playlist_name == 'likes':
+                    user_songs = saver.get_songs(user)
+                elif len(link) >= 2:
+
+                    #TODO: Fix, pulling playlist names, need: songs
+                    
+                    pl = saver._get_plist(link[1], user.id)
+                    user_songs = saver.get_playlist_songs(pl[1], user)
                 else:
                     user_songs = saver.get_songs(user)
                 if len(user_songs) > 0:
-                    ctx.playlist = " ".join(link[1:])
-                    self.curr_playlists[ctx.guild.id] = " ".join(link[1:])
+                    ctx.playlist = link[1]
+                    self.curr_playlists[ctx.guild.id] = link[1]
                     if shuffle:
                         random.shuffle(user_songs)
                     await ctx.send('''loading playlist''')
@@ -197,9 +205,9 @@ class Commands(commands.Cog):
             if emoji == '❤️':
                 await self.reaction_save(reaction.message.author, ctx, playlist=None)
             if emoji == '🔀':
-                await self.shuffle(ctx)
+                voice.shuffle()
             if emoji == '🔂':
-                await self.repeat(ctx)
+                await voice.repeat(ctx)
             if emoji == '⬅️':
                 await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]-1)
             if emoji == '➡️':
@@ -309,11 +317,14 @@ class Commands(commands.Cog):
         """Displays the currently playing song and future playlist if it exists."""
 
         try:
+            if ctx.voice_state.current is not None:
+                return await ctx.send("Nothing currently playing")
             sng = ctx.voice_state.current[1]
             embed = sng.build_embed()
             embed.add_field(name='Current Playlist:\n', value='------------', inline=False)
             count = 1
             for song in ctx.voice_state.songs.__iter__():
+                song = song[1]
                 embed.add_field(name=f'{count}): {song.name}', value=f'[Click]({song.link})', inline=False)
                 count += 1
             await ctx.send(embed=embed)
@@ -407,7 +418,7 @@ class Commands(commands.Cog):
             await ctx.send(f"Error displaying playlist: {e}")
             pass
 
-    @commands.command(name='playlists', aliases=['myplaylists', 'mylists', 'plsts'])
+    @commands.command(name='playlists', aliases=['myplaylists', 'mylists', 'plsts', 'pls'])
     async def playlists(self, ctx: commands.Context):
         """Displays a users playlists."""
 
@@ -444,7 +455,7 @@ class Commands(commands.Cog):
             embed.add_field(name=f'{count}): ', value=f' {i}', inline=False)
         return embed
 
-    @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist'])
+    @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist', 'makepl', 'newpl'])
     async def makeplaylist(self, ctx: commands.Context, playlist_name):
         """Creates new plalist."""
 

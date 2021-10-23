@@ -131,8 +131,8 @@ class PlaylistSaver:
     def _get_plist(self, playlist_name, uid):
         cursor = self.conn.cursor()
         try:
-            cursor.execute("""SELECT * FROM SONGS WHERE 
-                    PLAYLIST = ? AND USER_ID = ?  
+            cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
+                    NAME = ? AND CREATED_BY_ID = ?  
                     COLLATE NOCASE;""", (playlist_name, str(uid),))
             plist = cursor.fetchall()
             return plist
@@ -150,6 +150,19 @@ class PlaylistSaver:
         except Exception as e:
             pass
         return None
+
+    def get_playlist_songs(self, playlist_name, user):
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute('''
+                    SELECT * FROM SONGS
+                    WHERE PLAYLIST=? AND USER_ID=?;
+            ''', (str(playlist_name), user.id,))
+            songs = list(cursor.fetchall())
+        except Exception as e:
+            pass
+            return e    
+        return songs
 
     def get_songs(self, user):
         cursor = self.conn.cursor()
