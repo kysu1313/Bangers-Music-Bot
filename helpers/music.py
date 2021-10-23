@@ -1,4 +1,5 @@
 import asyncio
+import random
 from helpers.song_queue import SongQueue
 
 # Huge props goes to vbe0201 https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d
@@ -72,6 +73,11 @@ class Music():
     def play_next_song(self, error=None):
         self.next.set()        
 
+    def shuffle(self):
+        self._stop()
+        random.shuffle(self.songs._queue)
+        self.play_next_song() 
+
     async def audio_player_task(self):
         while True:
             self.next.clear()
@@ -93,6 +99,8 @@ class Music():
         await msg.add_reaction('⏯')
         await msg.add_reaction('⏩')
         await msg.add_reaction('⏹')
+        await msg.add_reaction('🔂')
+        await msg.add_reaction('🔀')
         await msg.add_reaction('❤️')
 
     def toggle_next(self):
