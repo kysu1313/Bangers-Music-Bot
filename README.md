@@ -1,4 +1,19 @@
 # Bangers
+
+Just an awesome Discord music bot
+
+[Click here to invite bot to Discord](https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot)
+
+I want to give a big shoutout to Vbe0201's [Simple Discord Music Bot](https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d)
+I got some of the underlying functionality from this, however, the majority of this project is created by myself.
+Note: If you use this project please reference both.
+
+# Features
+
+This bot has some cool features such as:
+
+- The ability to create and play playlists.
+=======
  Just an awesome Discord music bot
  
  [Click here to invite bot to Discord](https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot)
@@ -18,6 +33,41 @@ This bot has some cool features such as:
 - Audio priority queue meaning selected songs have the option to be placed at the front of the queue.
 
 # Examples
+
+Example of song playing.
+
+![image](https://user-images.githubusercontent.com/38538913/138575337-433323bd-e163-4fe7-8cc2-f4c75e2d57c4.png)
+
+Example of a playlist playing
+
+![image](https://user-images.githubusercontent.com/38538913/138575302-39c1658a-952e-4b80-b6e2-7dcc7330815b.png)
+
+# Commands
+
+Commands:
+clear  
+ join Join voice channel
+leave  
+ loop Pauses the currently playing song.
+makeplaylist Creates new plalist.
+now Displays the currently playing song and future playlist if it ...
+pause Pauses the currently playing song.
+ping Simple check to verify bot is functioning properly
+play Plays music from youtube link or playlist
+playlist Displays a users playlist.
+playlists Displays a users playlists.
+resume Resumes a currently paused song.
+save Saves the currently playing song to user playlist.
+skip Skips the currently playing song.
+stop Stops playing song and clears the queue.
+volume Sets the volume of the player.
+Controls:
+slowmode !slowmode <1-60 sec?> <on / off?>, enable / disable slowmode. ...
+​No Category:
+help Shows this message
+load  
+ unload
+=======
  Example of song playing.
  
 ![image](https://user-images.githubusercontent.com/38538913/138575337-433323bd-e163-4fe7-8cc2-f4c75e2d57c4.png)

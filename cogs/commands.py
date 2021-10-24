@@ -119,9 +119,9 @@ class Commands(commands.Cog):
                 elif len(link) >= 2:
 
                     #TODO: Fix, pulling playlist names, need: songs
-                    
+
                     pl = saver._get_plist(link[1], user.id)
-                    user_songs = saver.get_playlist_songs(pl[1], user)
+                    user_songs = saver.get_playlist_songs(pl[0][1], user)
                 else:
                     user_songs = saver.get_songs(user)
                 if len(user_songs) > 0:
@@ -317,7 +317,7 @@ class Commands(commands.Cog):
         """Displays the currently playing song and future playlist if it exists."""
 
         try:
-            if ctx.voice_state.current is not None:
+            if ctx.voice_state.current is None:
                 return await ctx.send("Nothing currently playing")
             sng = ctx.voice_state.current[1]
             embed = sng.build_embed()
