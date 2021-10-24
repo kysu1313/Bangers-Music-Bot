@@ -43,60 +43,26 @@ Example of a playlist playing
 ![image](https://user-images.githubusercontent.com/38538913/138575302-39c1658a-952e-4b80-b6e2-7dcc7330815b.png)
 
 # Commands
-
 Commands:
-clear  
- join Join voice channel
-leave  
- loop Pauses the currently playing song.
-makeplaylist Creates new plalist.
-now Displays the currently playing song and future playlist if it ...
-pause Pauses the currently playing song.
-ping Simple check to verify bot is functioning properly
-play Plays music from youtube link or playlist
-playlist Displays a users playlist.
-playlists Displays a users playlists.
-resume Resumes a currently paused song.
-save Saves the currently playing song to user playlist.
-skip Skips the currently playing song.
-stop Stops playing song and clears the queue.
-volume Sets the volume of the player.
+  $clear        
+  $join         Join voice channel
+  $leave        
+  $loop         Pauses the currently playing song.
+  $makeplaylist Creates new plalist.
+  $now          Displays the currently playing song and future playlist if it ...
+  $pause        Pauses the currently playing song.
+  $ping         Simple check to verify bot is functioning properly
+  $play         Plays music from youtube link or playlist
+  $playlist     Displays a users playlist.
+  $playlists    Displays a users playlists.
+  $resume       Resumes a currently paused song.
+  $save         Saves the currently playing song to user playlist.
+  $skip         Skips the currently playing song.
+  $stop         Stops playing song and clears the queue.
+  $volume       Sets the volume of the player.
 Controls:
-slowmode !slowmode <1-60 sec?> <on / off?>, enable / disable slowmode. ...
+  $slowmode     !slowmode <1-60 sec?> <on / off?>, enable / disable slowmode. ...
 ​No Category:
-help Shows this message
-load  
- unload
-=======
- Example of song playing.
- 
-![image](https://user-images.githubusercontent.com/38538913/138575337-433323bd-e163-4fe7-8cc2-f4c75e2d57c4.png)
- 
- Example of a playlist playing
- 
- ![image](https://user-images.githubusercontent.com/38538913/138575302-39c1658a-952e-4b80-b6e2-7dcc7330815b.png)
-
-# Commands
-Commands:
-  clear        
-  join         Join voice channel
-  leave        
-  loop         Pauses the currently playing song.
-  makeplaylist Creates new plalist.
-  now          Displays the currently playing song and future playlist if it ...
-  pause        Pauses the currently playing song.
-  ping         Simple check to verify bot is functioning properly
-  play         Plays music from youtube link or playlist
-  playlist     Displays a users playlist.
-  playlists    Displays a users playlists.
-  resume       Resumes a currently paused song.
-  save         Saves the currently playing song to user playlist.
-  skip         Skips the currently playing song.
-  stop         Stops playing song and clears the queue.
-  volume       Sets the volume of the player.
-Controls:
-  slowmode     !slowmode <1-60 sec?> <on / off?>, enable / disable slowmode. ...
-​No Category:
-  help         Shows this message
-  load         
-  unload       
+  $help         Shows this message
+  $load         
+  $unload       
