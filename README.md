@@ -11,26 +11,14 @@ Note: If you use this project please reference both.
 # Features
 
 This bot has some cool features such as:
-
 - The ability to create and play playlists.
-=======
- Just an awesome Discord music bot
- 
- [Click here to invite bot to Discord](https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot)
- 
-I want to give a big shoutout to Vbe0201's [Simple Discord Music Bot](https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d)
-I got some of the underlying functionality from this, however, the majority of this project is created by myself. 
-Note: If you use this project please reference both.
-
-# Features
-This bot has some cool features such as:
-- The ability to create and play playlists. 
 - Generic song lookup using keywords
 - In-app storage to maintain your liked songs and playlists
 - Full-featured reaction music player including ff, play, skip, loop, pause, shuffle, and like.
 - View saved playlists and directly play a song by reacting to it's line number.
 - Excellent audio quality
 - Audio priority queue meaning selected songs have the option to be placed at the front of the queue.
+
 
 # Examples
 
