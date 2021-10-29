@@ -1,4 +1,4 @@
-# Discord Bangers Bot
+# 🎧 💽 Discord Bangers Bot 💽 🎧 
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/cat.gif" width="300px">
