@@ -1,8 +1,15 @@
-# Bangers
+# Discord Bangers Bot
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/cat.gif" width="300px">
+</p>
+
+![](https://img.shields.io/badge/python-3.9-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
+![](https://img.shields.io/badge/youtube-dl2021.6.6-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
+![](https://img.shields.io/badge/discord-1.7.3-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
+![](https://img.shields.io/badge/humanize-2-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
+  
 Just an awesome Discord music bot
-
-[Click here to invite bot to Discord](https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot)
 
 I want to give a big shoutout to Vbe0201's [Simple Discord Music Bot](https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d)
 I got some of the underlying functionality from this, however, the majority of this project is created by myself.
