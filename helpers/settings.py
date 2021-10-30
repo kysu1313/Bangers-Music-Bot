@@ -12,7 +12,7 @@ class Settings:
         self.token = ""
         self.id = ""
         self.members = []
-        self.get_bot_id()
+        #self.get_bot_id()
 
     @staticmethod
     def set_slow_mode(enabled=None, time=None):
@@ -28,9 +28,9 @@ class Settings:
     def get_is_docker(self):
         return self.is_docker
 
-    def get_bot_id(self):
-        self.id = os.environ.get('bot_id')
-        return self.id
+    #def get_bot_id(self):
+    #    self.id = os.environ.get('bot_id')
+    #    return self.id
 
     def get_is_production(self):
         return self.is_production
