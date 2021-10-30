@@ -11,8 +11,6 @@
   
 Just an awesome Discord music bot
 
-https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot
-
   <img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/invite.png" href="https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot" width="150px">
 
 
