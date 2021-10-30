@@ -11,7 +11,9 @@
   
 ## Just an awesome Discord music bot
 
-  <img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/invite.png" href="https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot" height="60" width="150px">
+  [<img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/invite.png" height="60" width="150px">](https://discord.com/api/oauth2/authorize?client_id=896582169600884797&permissions=8&scope=bot)
+
+[<img src="https://s18955.pcdn.co/wp-content/uploads/2018/02/github.png" width="25"/>](https://github.com/user/repository/subscription)
 
 
 I want to give a big shoutout to Vbe0201's [Simple Discord Music Bot](https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d)
