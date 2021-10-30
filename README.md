@@ -39,25 +39,22 @@ Example of a playlist playing
 
 # Commands
 Commands:
-  $clear        
-  $join         Join voice channel
-  $leave        
-  $loop         Pauses the currently playing song.
-  $makeplaylist Creates new plalist.
-  $now          Displays the currently playing song and future playlist if it ...
-  $pause        Pauses the currently playing song.
-  $ping         Simple check to verify bot is functioning properly
-  $play         Plays music from youtube link or playlist
-  $playlist     Displays a users playlist.
-  $playlists    Displays a users playlists.
-  $resume       Resumes a currently paused song.
-  $save         Saves the currently playing song to user playlist.
-  $skip         Skips the currently playing song.
-  $stop         Stops playing song and clears the queue.
-  $volume       Sets the volume of the player.
-Controls:
-  $slowmode     !slowmode <1-60 sec?> <on / off?>, enable / disable slowmode. ...
-​No Category:
-  $help         Shows this message
-  $load         
-  $unload       
+```
+  - $clear        Clear queue
+  - $join         Join voice channel
+  - $leave        Remove bot from voice channel
+  - $loop         Pauses the currently playing song.
+  - $makeplaylist Creates new plalist.
+  - $now          Displays the currently playing song and future playlist if it ...
+  - $pause        Pauses the currently playing song.
+  - $ping         Simple check to verify bot is functioning properly
+  - $play         Plays music from youtube link or playlist
+  - $playlist     Displays a users playlist.
+  - $playlists    Displays a users playlists.
+  - $resume       Resumes a currently paused song.
+  - $save         Saves the currently playing song to user playlist.
+  - $skip         Skips the currently playing song.
+  - $stop         Stops playing song and clears the queue.
+  - $volume       Sets the volume of the player.
+  ```
+  
