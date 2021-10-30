@@ -1,8 +1,8 @@
 # 🎧 💽 Discord Bangers Bot 💽 🎧 
 
-<p align="center">
+<!-- <p align="center"> -->
   <img src="https://raw.githubusercontent.com/kysu1313/Bangers/main/img/cat.gif" width="300px">
-</p>
+<!-- </p> -->
 
 ![](https://img.shields.io/badge/python-3.9-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
 ![](https://img.shields.io/badge/youtube-dl2021.6.6-informational?style=flat&logo=<LOGO_NAME>&logoColor=white&color=2bbc8a) 
@@ -15,7 +15,7 @@ I want to give a big shoutout to Vbe0201's [Simple Discord Music Bot](https://gi
 I got some of the underlying functionality from this, however, the majority of this project is created by myself.
 Note: If you use this project please reference both.
 
-# Features
+# Features :+1:
 
 This bot has some cool features such as:
 - The ability to create and play playlists.
@@ -27,7 +27,7 @@ This bot has some cool features such as:
 - Audio priority queue meaning selected songs have the option to be placed at the front of the queue.
 
 
-# Examples
+# Examples 😊
 
 Example of song playing.
 
@@ -37,7 +37,7 @@ Example of a playlist playing
 
 ![image](https://user-images.githubusercontent.com/38538913/138575302-39c1658a-952e-4b80-b6e2-7dcc7330815b.png)
 
-# Commands
+# Commands 💾
 Commands:
 ```
   - $clear        Clear queue
