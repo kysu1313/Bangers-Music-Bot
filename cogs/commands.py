@@ -82,7 +82,10 @@ class Commands(commands.Cog):
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
         await ctx.send('An error occurred: {}'.format(str(error)))
 
-    @commands.command(name='join', help='Join voice channel')
+    @commands.command(name='join', help='''Join voice channel\n
+        You must be in a voice channel to summon bot.
+        Usage: !join''')
+        
     async def join(self, ctx, *, channel: t.Optional[discord.VoiceChannel]):
         try:
             server = ctx.author.voice.channel
@@ -158,7 +161,7 @@ class Commands(commands.Cog):
 
     async def _play_song(self, idx: int, ctx: commands.Context):
         """ 
-        Play a song by reacting to the !playlist command. 
+        Play a song by reacting to the !playlist command.\n 
         Automatically places the song to play next in the queue.
          """
         try:
@@ -222,7 +225,10 @@ class Commands(commands.Cog):
                 if voice.is_playing:
                     voice.resume()
 
-    @commands.command(name='clear', aliases=['empty'])
+    @commands.command(name='clear', aliases=['empty'], help='''
+        Clears the song queue.
+        Usage: !clear
+        ''')
     async def clear(self, ctx):
         try:
             if not ctx.voice_state.voice:
@@ -235,12 +241,15 @@ class Commands(commands.Cog):
         except Exception as e:
             raise ClearQueueError(f"Unable to clear current queue {e}")
 
-    @commands.command()
+    @commands.command(help='''Removes bot from voice channel\n
+        Usage: !leave
+        ''')
     async def leave(self, ctx):
         await ctx.voice_client.disconnect()
         #await ctx.voice_client.cleanup()
 
-    @commands.command(name='skip')
+    @commands.command(name='skip', help='''Skips current song\n
+        Usage: !skip''')
     @commands.has_permissions(manage_guild=True)
     async def _skip(self, ctx: commands.Context):
         """Skips the currently playing song."""
@@ -253,7 +262,8 @@ class Commands(commands.Cog):
         except Exception as e:
             raise SkipSongError(f"Unable to skip the currently playing song: {e}")
 
-    @commands.command(name='loop')
+    @commands.command(name='loop', help='''Repeats current song indefinitely\n
+        Usage: !loop''')
     @commands.has_permissions(manage_guild=True)
     async def loop(self, ctx: commands.Context):
         """Pauses the currently playing song."""
@@ -264,7 +274,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error pausing track: {e}")
             pass
 
-    @commands.command(name='pause')
+    @commands.command(name='pause', help='''Pause the currently playing song\n
+        Usage: !pause''')
     @commands.has_permissions(manage_guild=True)
     async def _pause(self, ctx: commands.Context):
         """Pauses the currently playing song."""
@@ -275,7 +286,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error pausing track: {e}")
             pass
 
-    @commands.command(name='resume')
+    @commands.command(name='resume', help='''Resume the currently playing song\n
+        Usage: !resume''')
     @commands.has_permissions(manage_guild=True)
     async def _resume(self, ctx: commands.Context):
         """Resumes a currently paused song."""
@@ -286,7 +298,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error resuming track: {e}")
             pass
 
-    @commands.command(name='stop')
+    @commands.command(name='stop', help='''Stops the currently playing song\n
+        Usage: !stop''')
     @commands.has_permissions(manage_guild=True)
     async def _stop(self, ctx: commands.Context):
         """Stops playing song and clears the queue."""
@@ -299,7 +312,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error stopping track: {e}")
             pass
 
-    @commands.command(name='volume')
+    @commands.command(name='volume', help='''Sets bots volume\n
+        Usage: !volume <1 - 100>''')
     async def _volume(self, ctx: commands.Context, *, volume: int):
         """Sets the volume of the player."""
 
@@ -312,7 +326,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error setting volume: {e}")
             pass
 
-    @commands.command(name='now', aliases=['show', 'current'])
+    @commands.command(name='now', aliases=['show', 'current'], help='''Shows current song and song queue.\n
+        Usage: !now''')
     async def _now(self, ctx: commands.Context):
         """Displays the currently playing song and future playlist if it exists."""
 
@@ -332,7 +347,8 @@ class Commands(commands.Cog):
             await ctx.send(f"Error showing current tracks: {e}")
             pass
 
-    @commands.command(name='save', aliases=['like', 'favorite'])
+    @commands.command(name='save', aliases=['like', 'favorite'], help='''Likes / Saves the current song to user "likes" playlist.\n
+        Usage: !save [playlist]''')
     async def save(self, ctx: commands.Context, playlist=None):
         """Saves the currently playing song to user playlist."""
 
@@ -373,7 +389,9 @@ class Commands(commands.Cog):
             await ctx.send(f"Error saving current song: {e}")
             pass
 
-    @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites', 'likes'])
+    @commands.command(name='playlist', aliases=['mysongs', 'songs', 'liked', 'favorites', 'likes'], 
+        help='''Displays a playlist\n
+        Usage: !playlist [playlist]''')
     async def songs(self, ctx: commands.Context, playlist=None, page=1):
         """Displays a users playlist."""
 
@@ -418,7 +436,9 @@ class Commands(commands.Cog):
             await ctx.send(f"Error displaying playlist: {e}")
             pass
 
-    @commands.command(name='playlists', aliases=['myplaylists', 'mylists', 'plsts', 'pls'])
+    @commands.command(name='playlists', aliases=['myplaylists', 'mylists', 'plsts', 'pls'], 
+        help='''Displays a list of the users playlists.\n
+        Usage: !playlists''')
     async def playlists(self, ctx: commands.Context):
         """Displays a users playlists."""
 
@@ -455,7 +475,9 @@ class Commands(commands.Cog):
             embed.add_field(name=f'{count}): ', value=f' {i}', inline=False)
         return embed
 
-    @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist', 'makepl', 'newpl'])
+    @commands.command(name='makeplaylist', aliases=['newplaylist', 'createlist', 'createplaylist', 'makepl', 'newpl'], 
+        help='''Creates a new playlist\n
+        Usage: !playlist <playlist-name>''')
     async def makeplaylist(self, ctx: commands.Context, playlist_name):
         """Creates new plalist."""
 
