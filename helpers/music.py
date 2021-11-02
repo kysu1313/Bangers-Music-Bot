@@ -105,7 +105,7 @@ class Music():
         await msg.add_reaction('⏯')
         await msg.add_reaction('⏩')
         await msg.add_reaction('⏹')
-        await msg.add_reaction('🔂')
+        #await msg.add_reaction('🔂')
         await msg.add_reaction('🔀')
         await msg.add_reaction('❤️')
 
