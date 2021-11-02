@@ -189,32 +189,36 @@ class Commands(commands.Cog):
     #@play.after_invoke
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction, ctx):
-        if not ctx.bot:
-            emoji = str(reaction.emoji)
-            voice = self.voice_states[ctx.guild.id]
-            
-            reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
-            if emoji in reacts:
-                idx = reacts.index(emoji)
-                await self._play_song(idx, ctx)
-            
-            if emoji == '⏯':
-                if voice.is_playing:
-                    voice.pause()
-            if emoji == '⏹':
-                voice.stop()
-            if emoji == '⏩':
-                voice.skip()
-            if emoji == '❤️':
-                await self.reaction_save(reaction.message.author, ctx, playlist=None)
-            if emoji == '🔀':
-                voice.shuffle()
-            if emoji == '🔂':
-                await voice.repeat(ctx)
-            if emoji == '⬅️':
-                await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]-1)
-            if emoji == '➡️':
-                await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]+1)
+        try:
+            if not ctx.bot:
+                emoji = str(reaction.emoji)
+                voice = self.voice_states[ctx.guild.id]
+                
+                reacts = ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟',]
+                if emoji in reacts:
+                    idx = reacts.index(emoji)
+                    await self._play_song(idx, ctx)
+                
+                if emoji == '⏯':
+                    if voice.is_playing:
+                        voice.pause()
+                if emoji == '⏹':
+                    voice.stop()
+                if emoji == '⏩':
+                    voice.skip()
+                if emoji == '❤️':
+                    await self.reaction_save(reaction.message.author, ctx, voice, playlist=None)
+                if emoji == '🔀':
+                    voice.shuffle()
+                if emoji == '🔂':
+                    await voice.loop(True)
+                if emoji == '⬅️':
+                    await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]-1)
+                if emoji == '➡️':
+                    await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]+1)
+        except Exception as e:
+            print(e)
+            pass
 
     @commands.Cog.listener()
     async def on_reaction_remove(self, reaction, ctx):
@@ -369,13 +373,14 @@ class Commands(commands.Cog):
             await ctx.send(f"Error saving current song: {e}")
             pass
 
-    async def reaction_save(self, user, ctx: commands.Context, playlist=None):
+    async def reaction_save(self, user, ctx: commands.Context, voice_state=None, playlist=None):
         """Saves the currently playing song to user playlist."""
 
         try:
             saver = PlaylistSaver()
             #user = ctx.author
-            song = ctx.voice_state.current[1]
+            #song = self.voice_states[ctx.guild.id].voice.current[1]
+            song = voice_state.current[1]
             if playlist is not None:
                 result = saver.add_to_playlist(playlist, user, song)
                 if result is None:
