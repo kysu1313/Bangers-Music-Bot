@@ -1,5 +1,6 @@
 import asyncio
 import random
+from async_timeout import timeout
 from helpers.song_queue import SongQueue
 
 # Huge props goes to vbe0201 https://gist.github.com/vbe0201/ade9b80f2d3b64643d854938d40a0a2d
@@ -83,7 +84,8 @@ class Music():
             self.next.clear()
             if not self._loop:
                 try:
-                    self.current = (await self.songs.get())
+                    async with timeout(180):
+                        self.current = await self.songs.get()
                 except asyncio.TimeoutError:
                     self.bot.loop.create_task(self.stop())
                     return

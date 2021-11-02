@@ -19,6 +19,8 @@ class VoiceError(Exception):
 class YTDLError(Exception):
     pass
 
+youtube_dl.utils.bug_reports_message = lambda: ''
+
 class YTDLSource(discord.PCMVolumeTransformer):
     YTDL_OPTIONS = {
         'format': 'bestaudio/best',
