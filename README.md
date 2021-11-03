@@ -44,9 +44,10 @@ Example of a playlist playing
 
 # Commands 💾
 Commands:
+Note: use the `$help <command name>` for more info on a particular command.
 ```
   - $clear        Clear queue
-  - $join         Join voice channel
+  - $join         Adds the bot to your current voice channel
   - $leave        Remove bot from voice channel
   - $loop         Pauses the currently playing song.
   - $makeplaylist Creates new plalist.
