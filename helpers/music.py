@@ -59,8 +59,14 @@ class Music():
         self._stop()
 
     def _stop(self):
-        if self.voice.is_playing:
-            self.voice.stop()
+        self.voice.stop()
+        
+    async def _stop_loop(self):
+        self.songs.clear()
+
+        if self.voice:
+            await self.voice.disconnect()
+            self.voice = None
 
     def pause(self):
         self.voice.pause()
@@ -87,10 +93,14 @@ class Music():
                     try:
                         async with timeout(180):
                             self.current = await self.songs.get()
-                    except asyncio.TimeoutError:
-                        self.bot.loop.create_task(self.stop())
+                    except asyncio.TimeoutError as e:
+                        self.bot.loop.create_task(self._stop_loop())
                         return
-                curr = self.current[1] # len(self.current)-1
+                    except Exception as e:
+                        self.bot.loop.create_task(self._stop_loop())
+                        print(e)
+                        return
+                curr = self.current[1]
                 curr.source.volume = self._volume
                 self.voice.play(curr.source, after=self.play_next_song)
                 await self.add_reactions()

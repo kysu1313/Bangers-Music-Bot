@@ -124,7 +124,10 @@ class Commands(commands.Cog):
                     #TODO: Fix, pulling playlist names, need: songs
 
                     pl = saver._get_plist(link[1], user.id)
-                    user_songs = saver.get_playlist_songs(pl[0][1], user)
+                    if len(pl) > 0:
+                        user_songs = saver.get_playlist_songs(pl[0][1], user)
+                    else:
+                        user_songs = saver.get_songs(user)
                 else:
                     user_songs = saver.get_songs(user)
                 if len(user_songs) > 0:
@@ -171,7 +174,7 @@ class Commands(commands.Cog):
             song_name = curr.split('.')[0]
             uid = curr.split('.')[1]
             curr_playlist = saver._get_plist(song_name, uid)
-            sng = curr_playlist[idx + 1]
+            sng = curr_playlist[idx + 2]
             song = None
             try:
                 source = await YTDLSource.create_source(curr_ctx, str(sng[2]), loop=self.bot.loop)
@@ -180,7 +183,6 @@ class Commands(commands.Cog):
             else:
                 song = Song(source, str(sng[2]))
             voice = self.voice_states[ctx.guild.id]
-            #queue_pos = voice.songs.__len__()
             await voice.songs.put((0, song))
         except Exception as e:
             print(e)
@@ -200,11 +202,15 @@ class Commands(commands.Cog):
                     idx = reacts.index(emoji)
                     await self._play_song(idx, ctx)
                 
+                
+                if emoji == '▶️':
+                    if not voice.is_playing:
+                        voice.resume()
                 if emoji == '⏯':
                     if voice.is_playing:
                         voice.pause()
                 if emoji == '⏹':
-                    voice.stop()
+                    voice._stop()
                 if emoji == '⏩':
                     voice.skip()
                 if emoji == '❤️':
@@ -251,6 +257,7 @@ class Commands(commands.Cog):
         ''')
     async def leave(self, ctx):
         await ctx.voice_client.disconnect()
+        self.voice_states[ctx.guild.id] = None
         #await ctx.voice_client.cleanup()
 
     @commands.command(name='skip', help='''Skips current song\n

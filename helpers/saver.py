@@ -131,9 +131,14 @@ class PlaylistSaver:
     def _get_plist(self, playlist_name, uid):
         cursor = self.conn.cursor()
         try:
-            cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
-                    NAME = ? AND CREATED_BY_ID = ?  
+            if playlist_name == "likes":
+                cursor.execute("""SELECT * FROM SONGS WHERE 
+                    PLAYLIST = ? AND USER_ID = ?  
                     COLLATE NOCASE;""", (playlist_name, str(uid),))
+            else:
+                cursor.execute("""SELECT * FROM PLAYLISTS WHERE 
+                        NAME = ? AND CREATED_BY_ID = ?  
+                        COLLATE NOCASE;""", (playlist_name, str(uid),))
             plist = cursor.fetchall()
             return plist
         except Exception as e:
