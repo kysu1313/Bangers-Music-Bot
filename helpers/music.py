@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import random
 from async_timeout import timeout
 from helpers.song_queue import SongQueue
@@ -8,12 +9,12 @@ from helpers.song_queue import SongQueue
 
 class Music():
 
-    def __init__(self, bot, ctx, voice):
+    def __init__(self, bot, ctx, voice, logger):
         self.bot = bot
         self.ctx = ctx
 
         #self.is_playing = False
-
+        self.logger = logger
         self.current = None
         self.voice = voice
         self.next = asyncio.Event()
@@ -106,6 +107,7 @@ class Music():
                 await self.add_reactions()
                 await self.next.wait()
             except Exception as e:
+                self.logger.error(f"Song_Queue, player error: {e}")
                 print(e)
                 pass
 

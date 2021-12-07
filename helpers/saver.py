@@ -7,9 +7,10 @@ from sqlite3.dbapi2 import Date
 
 
 class PlaylistSaver:
-    def __init__(self):
+    def __init__(self, logger):
         self.file_name = 'songs.db'
         self.conn = sqlite3.connect(self.file_name)
+        self.logger = logger
 
     def create_tables(self):
         cursor = self.conn.cursor()
@@ -38,20 +39,6 @@ class PlaylistSaver:
         self.conn.commit()
 
     def get_all_songs(self, a, b, c):
-        #self.conn = sqlite3.connect(self.file_name)
-        #cursor = self.conn.cursor()
-        #try:
-        #    cursor.execute("""
-        #                INSERT INTO PLAYLISTS
-        #                (ID, NAME, CREATED_BY_ID, LAST_UPDATED_DATE)
-        #                VALUES (NULL, ?, ?, ?);
-        #        """, (a, b, c,))
-        #    self.conn.commit()
-        #    return ""
-        #except Exception as e:
-        #    self.conn.close()
-        #    return e
-        #self.conn.close()
         return True
 
     def save_song(self, user, song):
@@ -77,6 +64,7 @@ class PlaylistSaver:
 
             self.conn.commit()
         except Exception as e:
+            self.logger.error(f"save_song: {e}")
             self.conn.close()
             return e
         #self.conn.close()
@@ -97,6 +85,7 @@ class PlaylistSaver:
                 self.conn.commit()
                 return True, ""
         except Exception as e:
+            self.logger.error(f"create_playlist: {e}")
             pass
             return None, e
         return False, ""
@@ -125,6 +114,7 @@ class PlaylistSaver:
             """.format(plist[0], song_id))
             self.conn.commit()
         except Exception as e:
+            self.logger.error(f"add_to_playlist: {e}")
             return e
         return True
 
@@ -142,6 +132,7 @@ class PlaylistSaver:
             plist = cursor.fetchall()
             return plist
         except Exception as e:
+            self.logger.error(f"get_plist: {e}")
             pass
         return None
 
@@ -153,6 +144,7 @@ class PlaylistSaver:
             plists = cursor.fetchall()
             return plists
         except Exception as e:
+            self.logger.error(f"get_all_plists: {e}")
             pass
         return None
 
@@ -165,6 +157,7 @@ class PlaylistSaver:
             ''', (str(playlist_name), user.id,))
             songs = list(cursor.fetchall())
         except Exception as e:
+            self.logger.error(f"get_playlist_songs: {e}")
             pass
             return e    
         return songs
@@ -178,6 +171,7 @@ class PlaylistSaver:
             ''', (str(user.id),))
             songs = list(cursor.fetchall())
         except Exception as e:
+            self.logger.error(f"get_songs: {e}")
             pass
             return e    
         return songs

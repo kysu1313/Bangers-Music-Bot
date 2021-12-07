@@ -38,12 +38,12 @@ async def on_ready():
     print(f"Discord.py API version: {discord.__version__}")
     print(f"Python version: {platform.python_version()}")
     print(f"Running on: {platform.system()} {platform.release()} ({os.name})")
-    saver = PlaylistSaver()
-    saver.create_tables()
+    #saver = PlaylistSaver()
+    #saver.create_tables()
     print("-------------------")
 
-    saver = PlaylistSaver()
-    saver.get_all_songs('one', 'two', 'three')
+    #saver = PlaylistSaver()
+    #saver.get_all_songs('one', 'two', 'three')
 
 @bot.event
 async def on_command_completion(ctx):
