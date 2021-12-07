@@ -14,6 +14,7 @@ from helpers.music import Music
 from helpers.song import Song
 from helpers.ytld_helper import VoiceError, YTDLError, YTDLSource
 import typing as t
+import logging
 
 #client = discord.Client()
 PLAYLIST_PREFIXES = ['-playlist', '-plst', '-p', '-pl']
@@ -51,16 +52,25 @@ class Commands(commands.Cog):
         self.curr_playlists = {}
         self.last_playlist_shown = {}
         self.curr_ctx = {}
+        
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        self.handler = logging.FileHandler('info.log')
+        self.handler.setLevel(logging.INFO)
+        self.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        self.handler.setFormatter(self.formatter)
+        self.logger.addHandler(self.handler)
 
     def get_voice_state(self, ctx: commands.Context):
         try:
             state = self.voice_states.get(ctx.guild.id)
             if not state:
-                state = Music(self.bot, ctx, self.voice)
+                state = Music(self.bot, ctx, self.voice, self.logger)
                 self.voice_states[ctx.guild.id] = state
-
+            self.logger.info(f"Voice State Connected for {ctx.guild.name}")
             return state
         except Exception as e:
+            self.logger.error(f"Voice state failed for {ctx.guild.name}")
             raise NoVoiceChannel("Unable to get current voice state.")
 
     async def cog_before_invoke(self, ctx: commands.Context):
@@ -72,6 +82,7 @@ class Commands(commands.Cog):
             self.bot.loop.create_task(state.stop())
 
     async def cog_command_error(self, ctx: commands.Context, error: commands.CommandError):
+        self.logger.error(f"Command error {error}")
         await ctx.send('An error occurred: {}'.format(str(error)))
 
     # Events
@@ -85,7 +96,6 @@ class Commands(commands.Cog):
     @commands.command(name='join', help='''Join voice channel\n
         You must be in a voice channel to summon bot.
         Usage: $join''')
-        
     async def join(self, ctx, *, channel: t.Optional[discord.VoiceChannel]):
         try:
             server = ctx.author.voice.channel
@@ -94,7 +104,9 @@ class Commands(commands.Cog):
                 return
             ctx.voice_state.voice = await server.connect()
             self.voice_states[server.id] = ctx.voice_state
+            self.logger.info(f"Voice channel joined by {ctx.author.name}")
         except Exception as e:
+            self.logger.error(f"Voice channel join FAILED by {ctx.author.name}")
             pass
 
     @commands.command(name='play',
@@ -114,7 +126,7 @@ class Commands(commands.Cog):
             self.curr_playlists[ctx.guild.id] = "--NONE--"
             if link[0] in PLAYLIST_PREFIXES:
                 shuffle = any(x in link for x in SHUFFLE_PREFIXES)
-                saver = PlaylistSaver()
+                saver = PlaylistSaver(self.logger)
                 user = ctx.author
                 playlist_name = link[1] if len(link) >= 1 else 'likes'
                 if playlist_name == 'likes':
@@ -141,6 +153,7 @@ class Commands(commands.Cog):
                             try:
                                 source = await YTDLSource.create_source(ctx, str(s[2]), loop=self.bot.loop)
                             except YTDLError as e:
+                                self.logger.error(f"play, YTDL Error: {e}")
                                 return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                             else:
                                 song = Song(source, str(s[2]))
@@ -153,6 +166,7 @@ class Commands(commands.Cog):
                     try:
                         source = await YTDLSource.create_source(ctx, str(link), loop=self.bot.loop)
                     except YTDLError as e:
+                        self.logger.error(f"play, YTDL Error: {e}")
                         return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
                     else:
                         song = Song(source, str(link))
@@ -160,6 +174,7 @@ class Commands(commands.Cog):
                         await ctx.voice_state.songs.put((queue_pos+1, song))
                         return await ctx.send('Enqueued {}'.format(str(source)))
         except Exception as e:
+            self.logger.error(f"play, YTDL Error: {e}")
             raise AudioPlayError(f"Something went wrong: {e}")
 
     async def _play_song(self, idx: int, ctx: commands.Context):
@@ -168,7 +183,7 @@ class Commands(commands.Cog):
         Automatically places the song to play next in the queue.
          """
         try:
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             curr = self.last_playlist_shown[ctx.guild.id]
             curr_ctx = self.curr_ctx[ctx.guild.id]
             song_name = curr.split('.')[0]
@@ -179,12 +194,14 @@ class Commands(commands.Cog):
             try:
                 source = await YTDLSource.create_source(curr_ctx, str(sng[2]), loop=self.bot.loop)
             except YTDLError as e:
+                self.logger.error(f"play_song, YTDL Error: {e}")
                 return await ctx.send('An error occurred while processing this request: {}'.format(str(e)))
             else:
                 song = Song(source, str(sng[2]))
             voice = self.voice_states[ctx.guild.id]
             await voice.songs.put((0, song))
         except Exception as e:
+            self.logger.error(f"play_song, YTDL Error: {e}")
             print(e)
             pass
 
@@ -224,6 +241,7 @@ class Commands(commands.Cog):
                 if emoji == '➡️':
                     await self.songs(ctx, self.last_playlist_shown[ctx.guild.id], self.curr_plst_pg[ctx.guild.id]+1)
         except Exception as e:
+            self.logger.error(f"Reaction add error: {e}")
             print(e)
             pass
 
@@ -250,6 +268,7 @@ class Commands(commands.Cog):
             ctx.voice_state.songs.clear()
             await ctx.send("Playlist cleared")
         except Exception as e:
+            self.logger.error(f"clear, failed to clear queue: {e}")
             raise ClearQueueError(f"Unable to clear current queue {e}")
 
     @commands.command(help='''Removes bot from voice channel\n
@@ -258,6 +277,7 @@ class Commands(commands.Cog):
     async def leave(self, ctx):
         await ctx.voice_client.disconnect()
         self.voice_states[ctx.guild.id] = None
+        self.logger.info(f"Left voice channel: {ctx.guild.name}")
         #await ctx.voice_client.cleanup()
 
     @commands.command(name='skip', help='''Skips current song\n
@@ -272,6 +292,7 @@ class Commands(commands.Cog):
             else:
                 ctx.voice_state.skip()
         except Exception as e:
+            self.logger.error(f"skip, failed to skip song: {e}")
             raise SkipSongError(f"Unable to skip the currently playing song: {e}")
 
     @commands.command(name='loop', help='''Repeats current song indefinitely\n
@@ -283,6 +304,7 @@ class Commands(commands.Cog):
             if ctx.voice_state.is_playing:
                 ctx.voice_state.loop(not ctx.voice_state.loop)
         except Exception as e:
+            self.logger.error(f"failed to loop song: {e}")
             await ctx.send(f"Error pausing track: {e}")
             pass
 
@@ -295,6 +317,7 @@ class Commands(commands.Cog):
             if ctx.voice_state.is_playing:
                 ctx.voice_state.pause()
         except Exception as e:
+            self.logger.error(f"pause, failed to pause song: {e}")
             await ctx.send(f"Error pausing track: {e}")
             pass
 
@@ -307,6 +330,7 @@ class Commands(commands.Cog):
             if ctx.voice_state.voice.is_paused():
                 ctx.voice_state.resume()
         except Exception as e:
+            self.logger.error(f"resume, failed to resume song: {e}")
             await ctx.send(f"Error resuming track: {e}")
             pass
 
@@ -321,6 +345,7 @@ class Commands(commands.Cog):
             if not ctx.voice_state.is_playing:
                 await ctx.voice_state.stop()
         except Exception as e:
+            self.logger.error(f"stop, failed to stop song: {e}")
             await ctx.send(f"Error stopping track: {e}")
             pass
 
@@ -335,6 +360,7 @@ class Commands(commands.Cog):
             ctx.voice_state.volume = volume / 100
             await ctx.send('Volume of the player set to {}%'.format(volume))
         except Exception as e:
+            self.logger.error(f"volume, failed to set volume: {e}")
             await ctx.send(f"Error setting volume: {e}")
             pass
 
@@ -356,6 +382,7 @@ class Commands(commands.Cog):
                 count += 1
             await ctx.send(embed=embed)
         except Exception as e:
+            self.logger.error(f"now, failed to show song queue: {e}")
             await ctx.send(f"Error showing current tracks: {e}")
             pass
 
@@ -365,7 +392,7 @@ class Commands(commands.Cog):
         """Saves the currently playing song to user playlist."""
 
         try:
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             user = ctx.author
             song = ctx.voice_state.current[1]
             if playlist is not None:
@@ -378,6 +405,7 @@ class Commands(commands.Cog):
                     return await ctx.send("Failed to like song")
             await ctx.send("{} - Saved {}".format(user.name, song.name))
         except Exception as e:
+            self.logger.error(f"save, failed to save song: {e}")
             await ctx.send(f"Error saving current song: {e}")
             pass
 
@@ -385,7 +413,7 @@ class Commands(commands.Cog):
         """Saves the currently playing song to user playlist."""
 
         try:
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             song = voice_state.current[1]
             if playlist is not None:
                 result = saver.add_to_playlist(playlist, user, song)
@@ -397,6 +425,7 @@ class Commands(commands.Cog):
                     return await ctx.send("Failed to like song")
             await ctx.send("{} - Saved {}".format(user.name, song.name))
         except Exception as e:
+            self.logger.error(f"reaction_save, failed to save song via reaction: {e}")
             await ctx.send(f"Error saving current song: {e}")
             pass
 
@@ -410,7 +439,7 @@ class Commands(commands.Cog):
             self.curr_ctx[ctx.guild.id] = ctx
             self.curr_plst_pg[ctx.guild.id] = page
             pg_size = 10
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             user = ctx.author
             if playlist is not None:
                 user_songs = saver._get_plist(playlist, user.id)
@@ -444,6 +473,7 @@ class Commands(commands.Cog):
             #    await msg.add_reaction('⬅️')
             #    await msg.add_reaction('➡️')
         except Exception as e:
+            self.logger.error(f"songs, failed to show playlist: {e}")
             await ctx.send(f"Error displaying playlist: {e}")
             pass
 
@@ -454,7 +484,7 @@ class Commands(commands.Cog):
         """Displays a users playlists."""
 
         try:
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             user = ctx.author
             all_plsts = saver._get_all_plists(user)
             if all_plsts == None:
@@ -462,6 +492,7 @@ class Commands(commands.Cog):
             else:
                 return await ctx.send(embed=self._create_playlist_embed(user, 'Playlists', all_plsts)) 
         except Exception as e:
+            self.logger.error(f"playlists, failed to show playlists: {e}")
             await ctx.send(f"Error displaying playlist: {e}")
             pass
 
@@ -493,7 +524,7 @@ class Commands(commands.Cog):
         """Creates new plalist."""
 
         try:
-            saver = PlaylistSaver()
+            saver = PlaylistSaver(self.logger)
             user = ctx.author
             res, err = saver.create_playlist(playlist_name, user)
             if res is False:
@@ -502,6 +533,7 @@ class Commands(commands.Cog):
                 return await ctx.send(f"Error: {err}")
             return await ctx.send("{} - Created playlist {}".format(user.name, playlist_name))
         except Exception as e:
+            self.logger.error(f"makeplaylist, failed to create playlist: {e}")
             await ctx.send(f"Error creating playlist: {e}")
             pass
 
