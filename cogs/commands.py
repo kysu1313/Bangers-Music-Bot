@@ -15,6 +15,8 @@ from helpers.song import Song
 from helpers.ytld_helper import VoiceError, YTDLError, YTDLSource
 import typing as t
 import logging
+import os
+import sys
 
 #client = discord.Client()
 PLAYLIST_PREFIXES = ['-playlist', '-plst', '-p', '-pl']
@@ -264,7 +266,7 @@ class Commands(commands.Cog):
                 channel = ctx.author.voice.channel
                 await ctx.send('You are not currently in a voice channel so you cant clear a playlist.')
                 return
-            ctx.voice_state.stop()
+            ctx.voice_state._stop()
             ctx.voice_state.songs.clear()
             await ctx.send("Playlist cleared")
         except Exception as e:
@@ -343,7 +345,7 @@ class Commands(commands.Cog):
         try:
             ctx.voice_state.songs.clear()
             if not ctx.voice_state.is_playing:
-                await ctx.voice_state.stop()
+                await ctx.voice_state._stop()
         except Exception as e:
             self.logger.error(f"stop, failed to stop song: {e}")
             await ctx.send(f"Error stopping track: {e}")
@@ -548,6 +550,16 @@ class Commands(commands.Cog):
                 raise commands.CommandError('Bot is already in a voice channel.')
         if self.voice is None:
             self.voice = discord.utils.get(self.bot.voice_clients, guild=commands.Context.guild)
+
+    @commands.command(name='restart', aliases=['reboot'], 
+        help='''Restarts the app. ONLY USE IF FROZEN (Beta feature only)\n
+        Usage: $playlist <playlist-name>''')
+    async def restart(self, ctx: commands.Context):
+        # TODO: REMOVE COMMAND
+        print(sys.argv[0], sys.argv)
+        os.system("killall app.py & python3 "+sys.argv[0])
+        self.logger.error(f"restarting app")
+
 
     # Commands
     @commands.command(help='Simple check to verify bot is functioning properly')

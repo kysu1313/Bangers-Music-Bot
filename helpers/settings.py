@@ -37,4 +37,5 @@ class Settings:
 
     def get_bot_token(self):
         self.token = os.environ.get('discord_token')
+        #self.token = os.environ.get('test_discord_token')
         return self.token
