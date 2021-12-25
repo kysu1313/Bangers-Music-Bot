@@ -95,9 +95,11 @@ class Music():
                         async with timeout(180):
                             self.current = await self.songs.get()
                     except asyncio.TimeoutError as e:
+                        self.logger.error(f"bot timed out: {e}")
                         self.bot.loop.create_task(self._stop_loop())
                         return
                     except Exception as e:
+                        self.logger.error(f"bot timed out: {e}")
                         self.bot.loop.create_task(self._stop_loop())
                         print(e)
                         return
