@@ -559,7 +559,7 @@ class Commands(commands.Cog):
         print(sys.argv[0], sys.argv)
         #os.system("killall python3 & python3 "+sys.argv[0])
         #os.execv(sys.executable, ['python3 '] + sys.argv)
-        os.system('runme.sh')
+        os.system('/home/bangers-bot/runme.sh')
         self.logger.error(f"restarting app")
 
 
