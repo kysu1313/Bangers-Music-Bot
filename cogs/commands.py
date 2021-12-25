@@ -557,7 +557,7 @@ class Commands(commands.Cog):
     async def restart(self, ctx: commands.Context):
         # TODO: REMOVE COMMAND
         print(sys.argv[0], sys.argv)
-        os.system("killall app.py & python3 "+sys.argv[0])
+        os.system("killall python3 & python3 "+sys.argv[0])
         self.logger.error(f"restarting app")
 
 
